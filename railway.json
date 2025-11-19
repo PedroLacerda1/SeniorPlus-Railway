@@ -1,0 +1,8 @@
+{
+  "build": {
+    "command": "chmod +x build.sh && ./build.sh"
+  },
+  "start": {
+    "command": "chmod +x start.sh && ./start.sh"
+  }
+}
