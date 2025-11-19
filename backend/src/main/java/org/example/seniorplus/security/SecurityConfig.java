@@ -79,6 +79,8 @@ public class SecurityConfig {
         configuration.setAllowCredentials(true);
         configuration.addAllowedOriginPattern("http://localhost:*");
         configuration.addAllowedOriginPattern("http://127.0.0.1:*");
+        configuration.addAllowedOrigin("https://seniorplus.up.railway.app");
+        configuration.addAllowedOrigin("https://seniorplus-backend.up.railway.app");
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
         configuration.setMaxAge(3600L);
