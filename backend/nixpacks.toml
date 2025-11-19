@@ -1,0 +1,9 @@
+[phases.build]
+dependsOn = ['install']
+cmds = [
+    'chmod +x ../build.sh',
+    '../build.sh'
+]
+
+[phases.start]
+cmd = 'chmod +x start.sh && ./start.sh'
