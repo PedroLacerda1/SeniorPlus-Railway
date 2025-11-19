@@ -9,7 +9,8 @@ COPY package.json .
 COPY package-lock.json .
 RUN npm install
 COPY . .
-RUN npm run build 
+# Garante que o build use as variáveis de produção quando Railway não passa build args
+RUN cp .env.production .env && npm run build 
 
 # Estágio 2: Execução (serviço do Nginx para servir o conteúdo estático)
 FROM nginx:alpine
