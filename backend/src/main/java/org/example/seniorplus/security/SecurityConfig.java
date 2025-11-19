@@ -51,6 +51,15 @@ public class SecurityConfig {
                             "/api-docs/**"
                     ).permitAll()
 
+                        // Health checks e rota raiz usados pelo Railway para probes/public landing
+                        .requestMatchers(
+                            "/",
+                            "/error",
+                            "/health",
+                            "/actuator",
+                            "/actuator/**"
+                        ).permitAll()
+
                     // Qualquer outra rota requer autenticação
                     .anyRequest().authenticated()
             )
