@@ -14,3 +14,8 @@ $MVN_CMD clean install -DskipTests
 
 echo "[build] Contents of target/"
 ls -la target/
+
+# Railway expects build artifacts under /app/target, so copy them up one level
+ROOT_TARGET_DIR="$(cd .. && pwd)/target"
+mkdir -p "$ROOT_TARGET_DIR"
+cp target/*.jar "$ROOT_TARGET_DIR"/ 2>/dev/null || echo "[build] Nenhum JAR encontrado para copiar"
