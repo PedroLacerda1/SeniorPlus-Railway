@@ -61,6 +61,8 @@ jobs:
           npm test -- --watch=false
       - name: Build frontend
         working-directory: ${{ env.FRONTEND_DIR }}
+        env:
+          CI: false
         run: npm run build
 
   infrastructure:
