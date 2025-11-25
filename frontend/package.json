@@ -19,7 +19,9 @@
     "lucide-react": "^0.511.0",
     "react-calendar": "^5.1.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "yaml": "2.8.1"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
