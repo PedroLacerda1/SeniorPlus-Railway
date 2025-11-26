@@ -74,7 +74,7 @@ jobs:
 
       # ========== ESLint + Jest ==========
       - name: Lint + Jest tests
-        working-directory: ${{ env_FRONTEND_DIR }}
+        working-directory: ${{ env.FRONTEND_DIR }}
         run: |
           npm run lint
           npm test -- --watch=false
