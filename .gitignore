@@ -13,7 +13,6 @@
 /backend/target/
 *.log
 scan.log
-
 # Arquivos de IDE e Sistema
 .idea/
 .vscode/
