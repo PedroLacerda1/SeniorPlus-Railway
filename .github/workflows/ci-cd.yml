@@ -131,10 +131,10 @@ jobs:
         run: npm install -g @railway/cli
       - name: Deploy backend service
         run: |
-          railway --project $RAILWAY_PROJECT_ID up --service $RAILWAY_BACKEND_SERVICE --detach
+          railway up --service $RAILWAY_BACKEND_SERVICE --detach
       - name: Deploy frontend service
         run: |
-          railway --project $RAILWAY_PROJECT_ID up --service $RAILWAY_FRONTEND_SERVICE --detach
+          railway up --service $RAILWAY_FRONTEND_SERVICE --detach
       - name: Monitor smoke (health + landing)
         run: |
           curl -f "$BACKEND_HEALTH_URL"
