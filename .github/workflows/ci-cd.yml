@@ -95,6 +95,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Dependency scan (Maven + npm)
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: bash tests/security/dependency-scan.sh
       - name: k6 performance smoke
         uses: grafana/k6-action@v0.2.0
