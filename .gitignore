@@ -12,7 +12,7 @@
 # Dependências do Maven/Java (Back-end)
 /backend/target/
 *.log
-sacn.log
+scan.log
 
 # Arquivos de IDE e Sistema
 .idea/
