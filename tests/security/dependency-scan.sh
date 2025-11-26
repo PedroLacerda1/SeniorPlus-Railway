@@ -14,7 +14,14 @@ fi
 bash ./backend/mvnw -pl backend -am "${DC_ARGS[@]}"
 
 pushd frontend >/dev/null
+set +o pipefail
 npm audit --production --audit-level=high --json | node ../tests/security/filter-audit.js
+AUDIT_STATUS=$?
+set -o pipefail
 popd >/dev/null
+
+if [[ $AUDIT_STATUS -ne 0 ]]; then
+	exit $AUDIT_STATUS
+fi
 
 popd >/dev/null

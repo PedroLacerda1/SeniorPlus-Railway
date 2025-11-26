@@ -12,8 +12,7 @@
 # Dependências do Maven/Java (Back-end)
 /backend/target/
 *.log
-scan.log
-
+console.log
 # Arquivos de IDE e Sistema
 .idea/
 .vscode/
