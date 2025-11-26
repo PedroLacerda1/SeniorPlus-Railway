@@ -162,13 +162,17 @@ jobs:
 
 
   # ======================================================
-  # DEPLOY — Railway (Frontend + Backend)
-  # ======================================================
+# DEPLOY — Railway (Frontend + Backend)
+# ======================================================
   deploy:
     name: Deploy & Monitoring (Railway)
     runs-on: ubuntu-latest
     needs:
-      [ backend, frontend, infrastructure, security, performance ]
+      - backend
+      - frontend
+      - infrastructure
+      - security
+      - performance
     if: github.ref == 'refs/heads/main'
 
     env:
@@ -185,14 +189,17 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+    
       - name: Link Railway Project
-        run: railway --token $RAILWAY_TOKEN link --project $RAILWAY_PROJECT_ID
+        run: railway link --project $RAILWAY_PROJECT_ID
 
+      # 📌 Deploy do backend
       - name: Deploy backend
-        run: railway --token $RAILWAY_TOKEN up --service $RAILWAY_BACKEND_SERVICE --detach
+        run: railway up --service $RAILWAY_BACKEND_SERVICE --detach
 
+      # 📌 Deploy do frontend
       - name: Deploy frontend
-        run: railway --token $RAILWAY_TOKEN up --service $RAILWAY_FRONTEND_SERVICE --detach
+        run: railway up --service $RAILWAY_FRONTEND_SERVICE --detach
 
       # ========== Monitoramento após Deploy ==========
       - name: Health Monitoring
