@@ -129,6 +129,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - name: Install Railway CLI
         run: npm install -g @railway/cli
+      - name: Authenticate Railway CLI
+        run: railway login --serviceToken $RAILWAY_TOKEN
+      - name: Link Railway project
+        run: railway link --project $RAILWAY_PROJECT_ID
       - name: Deploy backend service
         run: |
           railway up --service $RAILWAY_BACKEND_SERVICE --detach
