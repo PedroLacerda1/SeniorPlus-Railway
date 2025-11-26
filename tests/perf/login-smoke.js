@@ -10,7 +10,20 @@ export const options = {
   },
 };
 
-const baseUrl = __ENV.BACKEND_BASE_URL || 'https://seniorplus-backend.up.railway.app';
+const DEFAULT_BASE_URL = 'https://seniorplus-backend.up.railway.app';
+
+function normalizeBaseUrl(raw) {
+  const value = (raw || '').trim();
+  if (!value) {
+    return DEFAULT_BASE_URL;
+  }
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+  return `https://${value}`;
+}
+
+const baseUrl = normalizeBaseUrl(__ENV.BACKEND_BASE_URL);
 const healthEndpoint = `${baseUrl.replace(/\/$/, '')}/health`;
 
 export default function () {
