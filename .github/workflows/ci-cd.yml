@@ -139,7 +139,8 @@ jobs:
       # ========== Basic JWT security validation ==========
       - name: Run JWT structure/expiration validation
         run: node tests/security/jwt-validate.js
-
+        env:
+          TEST_JWT: ${{ secrets.TEST_JWT }}
 
   # ======================================================
   # PERFORMANCE — k6 (Login + API Smoke)
