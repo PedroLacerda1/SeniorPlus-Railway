@@ -190,16 +190,18 @@ jobs:
         run: npm install -g @railway/cli
 
     
+      - name: Authenticate Railway
+        run: echo $RAILWAY_TOKEN | railway login --ci
+
       - name: Link Railway Project
         run: railway link --project $RAILWAY_PROJECT_ID
 
-      # 📌 Deploy do backend
       - name: Deploy backend
         run: railway up --service $RAILWAY_BACKEND_SERVICE --detach
 
-      # 📌 Deploy do frontend
       - name: Deploy frontend
         run: railway up --service $RAILWAY_FRONTEND_SERVICE --detach
+
 
       # ========== Monitoramento após Deploy ==========
       - name: Health Monitoring
