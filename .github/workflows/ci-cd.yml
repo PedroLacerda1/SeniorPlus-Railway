@@ -78,6 +78,7 @@ jobs:
         run: |
           npm run lint
           npm test -- --watch=false
+
       # ========== Build React ==========
       - name: Build frontend (React.js)
         working-directory: ${{ env.FRONTEND_DIR }}
@@ -105,6 +106,8 @@ jobs:
           docker compose up -d
           sleep 10
           docker compose ps
+
+
   # ======================================================
   # SEGURANÇA — OWASP, Dependências e Validação JWT
   # ======================================================
@@ -139,6 +142,7 @@ jobs:
         env:
           TEST_JWT: ${{ secrets.TEST_JWT }}
 
+
   # ======================================================
   # PERFORMANCE — k6 (Login + API Smoke)
   # ======================================================
@@ -159,8 +163,8 @@ jobs:
 
 
   # ======================================================
-# DEPLOY — Railway (Frontend + Backend)
-# ======================================================
+  # DEPLOY — Railway (CORRIGIDO)
+  # ======================================================
   deploy:
     name: Deploy & Monitoring (Railway)
     runs-on: ubuntu-latest
@@ -186,20 +190,35 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-    
-      - name: Link Railway Project
-        run: railway link --project $RAILWAY_PROJECT_ID
+      # ============================
+      # DEPLOY BACKEND
+      # ============================
+      - name: Deploy Backend
+        run: |
+          railway up \
+            --project $RAILWAY_PROJECT_ID \
+            --service $RAILWAY_BACKEND_SERVICE \
+            --ci
 
-      # 📌 Deploy do backend
-      - name: Deploy backend
-        run: railway up --service $RAILWAY_BACKEND_SERVICE --detach
+      # ============================
+      # DEPLOY FRONTEND
+      # ============================
+      - name: Deploy Frontend
+        run: |
+          railway up \
+            --project $RAILWAY_PROJECT_ID \
+            --service $RAILWAY_FRONTEND_SERVICE \
+            --ci
 
-      # 📌 Deploy do frontend
-      - name: Deploy frontend
-        run: railway up --service $RAILWAY_FRONTEND_SERVICE --detach
-
-      # ========== Monitoramento após Deploy ==========
+      # ============================
+      # MONITORAMENTO
+      # ============================
       - name: Health Monitoring
         run: |
+          echo "Checking backend..."
           curl -f "$BACKEND_HEALTH_URL"
+          echo "Backend OK!"
+
+          echo "Checking frontend..."
           curl -f "$FRONTEND_BASE_URL"
+          echo "Frontend OK!"
