@@ -184,8 +184,9 @@ jobs:
       # ============================
       # LINK DO PROJETO
       # ============================
-      - name: Link Railway Project
-        run: railway link $RAILWAY_PROJECT_ID
+      - name: Railway Login (CI)
+        run: railway login --ci
+
 
       # ============================
       # STATUS DO PROJETO
