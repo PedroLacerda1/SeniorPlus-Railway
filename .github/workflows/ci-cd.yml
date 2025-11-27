@@ -156,10 +156,10 @@ jobs:
 
 
   # ======================================================
-  # MONITORAMENTO — Health Checks + Logs
+  # MONITORAMENTO — Health Checks + Frontend Endpoints
   # ======================================================
   monitoring:
-    name: Monitoring · Health Checks & Logs
+    name: Monitoring · Health Checks & Frontend Endpoints
     runs-on: ubuntu-latest
     needs:
       - backend
@@ -170,10 +170,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     env:
-      BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
+      BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
       FRONTEND_BASE_URL: ${{ secrets.FRONTEND_BASE_URL }}
-      BACKEND_LOG_URL: ${{ secrets.BACKEND_LOG_URL }}
-      FRONTEND_LOG_URL: ${{ secrets.FRONTEND_LOG_URL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -183,8 +181,8 @@ jobs:
       # ============================
       - name: Backend Health Check
         run: |
-          echo "Checking backend..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$BACKEND_HEALTH_URL")
+          echo "Checking backend health endpoint..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$BACKEND_BASE_URL/health")
           if [ "$STATUS" -ne 200 ]; then
             echo "❌ Backend health endpoint failed with status $STATUS"
             exit 1
@@ -205,27 +203,24 @@ jobs:
           echo "✅ Frontend is healthy!"
 
       # ============================
-      # LOG CHECK — BACKEND
+      # TESTES DE ENDPOINTS CRÍTICOS — FRONTEND
       # ============================
-      - name: Backend Logs Check
+      - name: Frontend Critical Endpoints
         run: |
-          echo "Fetching backend logs..."
-          curl -s "$BACKEND_LOG_URL" -o backend_logs.txt
-          if grep -Ei "error|fatal|panic|exception" backend_logs.txt; then
-            echo "❌ Errors found in backend logs!"
-            exit 1
-          fi
-          echo "✅ Backend logs are clean!"
+          echo "Testing frontend critical pages..."
 
-      # ============================
-      # LOG CHECK — FRONTEND
-      # ============================
-      - name: Frontend Logs Check
-        run: |
-          echo "Fetching frontend logs..."
-          curl -s "$FRONTEND_LOG_URL" -o frontend_logs.txt
-          if grep -Ei "error|fatal|panic|exception" frontend_logs.txt; then
-            echo "❌ Errors found in frontend logs!"
+          # Página inicial
+          HOME_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_BASE_URL/")
+          if [ "$HOME_STATUS" -ne 200 ]; then
+            echo "❌ Frontend home page failed with status $HOME_STATUS"
             exit 1
           fi
-          echo "✅ Frontend logs are clean!"
+
+          # Dashboard ou outra página crítica
+          DASHBOARD_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_BASE_URL/dashboard")
+          if [ "$DASHBOARD_STATUS" -ne 200 ]; then
+            echo "❌ Frontend /dashboard failed with status $DASHBOARD_STATUS"
+            exit 1
+          fi
+
+          echo "✅ Frontend critical endpoints OK!"
