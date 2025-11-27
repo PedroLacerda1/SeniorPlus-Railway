@@ -184,7 +184,7 @@ jobs:
       - name: Backend Health Check
         run: |
           echo "Checking backend..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_HEALTH_URL")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$BACKEND_HEALTH_URL")
           if [ "$STATUS" -ne 200 ]; then
             echo "❌ Backend health endpoint failed with status $STATUS"
             exit 1
@@ -197,7 +197,7 @@ jobs:
       - name: Frontend Health Check
         run: |
           echo "Checking frontend..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_BASE_URL")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$FRONTEND_BASE_URL")
           if [ "$STATUS" -ne 200 ]; then
             echo "❌ Frontend unavailable! Status $STATUS"
             exit 1
