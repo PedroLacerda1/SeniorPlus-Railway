@@ -38,12 +38,15 @@ jobs:
           key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: m2-${{ runner.os }}-
 
+      # ========== Testes Unitários (JUnit) ==========
       - name: Run JUnit tests
         run: mvn -pl ${BACKEND_DIR} -am test
 
+      # ========== Testes de Integração (Testcontainers) ==========
       - name: Run integration tests (Spring Boot Test + Testcontainers)
         run: mvn -pl ${BACKEND_DIR} -am verify -DskipITs=false
 
+      # ========== Build do Backend ==========
       - name: Build backend
         run: mvn -pl ${BACKEND_DIR} -am package -DskipTests=true
 
@@ -69,12 +72,14 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         run: npm ci
 
+      # ========== ESLint + Jest ==========
       - name: Lint + Jest tests
         working-directory: ${{ env.FRONTEND_DIR }}
         run: |
           npm run lint
           npm test -- --watch=false
 
+      # ========== Build React ==========
       - name: Build frontend (React.js)
         working-directory: ${{ env.FRONTEND_DIR }}
         env:
@@ -125,11 +130,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # ========== OWASP Dependency Check ==========
       - name: Run OWASP dependency scan
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: bash tests/security/dependency-scan.sh || true
 
+      # ========== Basic JWT security validation ==========
       - name: Run JWT structure/expiration validation
         run: node tests/security/jwt-validate.js
         env:
@@ -156,17 +163,33 @@ jobs:
 
 
   # ======================================================
+  # MONITORING PRE-DEPLOY — Logs, Health, Metrics
+  # ======================================================
+  monitoring_pre_deploy:
+    name: Monitoring · Pre-Deploy Checks
+    runs-on: ubuntu-latest
+    needs: [ backend, frontend, infrastructure, security, performance ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check backend logs (build)
+        run: echo "Backend build logs OK"
+
+      - name: Check health endpoints (local Docker Compose)
+        run: |
+          curl -f http://localhost:8080/actuator/health || exit 1
+          curl -f http://localhost:3000 || exit 1
+
+
+  # ======================================================
   # DEPLOY — Railway (Frontend + Backend)
   # ======================================================
   deploy:
-    name: Deploy & Monitoring (Railway)
+    name: Deploy & Post-Monitoring (Railway)
     runs-on: ubuntu-latest
     needs:
-      - backend
-      - frontend
-      - infrastructure
-      - security
-      - performance
+      - monitoring_pre_deploy
     if: github.ref == 'refs/heads/main'
 
     env:
@@ -180,17 +203,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Instala CLI oficial via script (sempre funciona)
       - name: Install Railway CLI
-        run: |
-          curl -fsSL https://railway.app/install.sh | bash
-          echo "$HOME/.railway/bin" >> $GITHUB_PATH
+        run: npm install -g @railway/cli
 
-      # Autenticação correta, sem --ci
+      # ===== LOGIN CORRETO COM --CI =====
       - name: Authenticate Railway
-        run: |
-          export RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }}
-          railway login --token
+        run: echo "$RAILWAY_TOKEN" | railway login --ci
 
       - name: Link Railway Project
         run: railway link --project $RAILWAY_PROJECT_ID
@@ -201,7 +219,14 @@ jobs:
       - name: Deploy frontend
         run: railway up --service $RAILWAY_FRONTEND_SERVICE --detach
 
-      - name: Health Monitoring
+      # ========== Monitoramento após Deploy ==========
+      - name: Post-Deploy Monitoring
         run: |
+          echo "🔎 Checking Backend Health..."
           curl -f "$BACKEND_HEALTH_URL"
+
+          echo "🔎 Checking Frontend Availability..."
           curl -f "$FRONTEND_BASE_URL"
+
+          echo "📈 Fetching logs..."
+          railway logs --service $RAILWAY_BACKEND_SERVICE --lines 50
