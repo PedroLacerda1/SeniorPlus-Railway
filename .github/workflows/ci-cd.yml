@@ -210,14 +210,14 @@ jobs:
           echo "Testing frontend critical pages..."
 
           # Página inicial
-          HOME_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_BASE_URL/")
+          HOME_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$FRONTEND_BASE_URL/")
           if [ "$HOME_STATUS" -ne 200 ]; then
             echo "❌ Frontend home page failed with status $HOME_STATUS"
             exit 1
           fi
 
           # Dashboard ou outra página crítica
-          DASHBOARD_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_BASE_URL/dashboard")
+          DASHBOARD_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$FRONTEND_BASE_URL/dashboard")
           if [ "$DASHBOARD_STATUS" -ne 200 ]; then
             echo "❌ Frontend /dashboard failed with status $DASHBOARD_STATUS"
             exit 1
