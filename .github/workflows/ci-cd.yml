@@ -16,7 +16,7 @@ env:
 jobs:
 
   # ======================================================
-  # BACKEND — Spring Boot
+  # BACKEND — Spring Boot (JUnit + Testcontainers + Build)
   # ======================================================
   backend:
     name: Backend · Unit + Integration + Build
@@ -29,50 +29,68 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ env.Java_VERSION }}
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Cache Maven
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: m2-${{ runner.os }}-
 
-      - name: Run tests
+      # ========== Testes Unitários (JUnit) ==========
+      - name: Run JUnit tests
         run: mvn -pl ${BACKEND_DIR} -am test
 
+      # ========== Testes de Integração (Testcontainers) ==========
+      - name: Run integration tests (Spring Boot Test + Testcontainers)
+        run: mvn -pl ${BACKEND_DIR} -am verify -DskipITs=false
+
+      # ========== Build do Backend ==========
       - name: Build backend
         run: mvn -pl ${BACKEND_DIR} -am package -DskipTests=true
 
 
   # ======================================================
-  # FRONTEND — React.js
+  # FRONTEND — React.js (Jest + Lint + Build)
   # ======================================================
   frontend:
-    name: Frontend · Tests + Build
+    name: Frontend · Lint + Unit Tests + Build
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Node
+      - name: Install Node 20
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
 
       - name: Install dependencies
         working-directory: ${{ env.FRONTEND_DIR }}
         run: npm ci
 
-      - name: Build frontend
+      # ========== ESLint + Jest ==========
+      - name: Lint + Jest tests
         working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          npm run lint
+          npm test -- --watch=false
+      # ========== Build React ==========
+      - name: Build frontend (React.js)
+        working-directory: ${{ env.FRONTEND_DIR }}
+        env:
+          CI: false
         run: npm run build
 
 
   # ======================================================
-  # INFRA — Docker Validation
+  # INFRAESTRUTURA — Docker Build + Compose Validation
   # ======================================================
   infrastructure:
-    name: Infra · Docker Build
+    name: Infra · Docker Build/Run Validation
     runs-on: ubuntu-latest
     needs: [ backend, frontend ]
 
@@ -82,37 +100,85 @@ jobs:
       - name: Build Docker Compose services
         run: docker compose build
 
-
+      - name: Validate service startup
+        run: |
+          docker compose up -d
+          sleep 10
+          docker compose ps
   # ======================================================
-  # SECURITY — Scans
+  # SEGURANÇA — OWASP, Dependências e Validação JWT
   # ======================================================
   security:
-    name: Security · Dependency Scan
+    name: Segurança · Dependency Scan + JWT Check
     runs-on: ubuntu-latest
     needs: [ backend, frontend ]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: OWASP Dependency Scan
+      - name: Install Java for OWASP
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # ========== OWASP Dependency Check (Maven + npm) ==========
+      - name: Run OWASP dependency scan
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: bash tests/security/dependency-scan.sh || true
 
+      # ========== Basic JWT security validation ==========
+      - name: Run JWT structure/expiration validation
+        run: node tests/security/jwt-validate.js
+        env:
+          TEST_JWT: ${{ secrets.TEST_JWT }}
 
   # ======================================================
-  # DEPLOY — Railway
+  # PERFORMANCE — k6 (Login + API Smoke)
   # ======================================================
-  deploy:
-    name: Deploy Railway
+  performance:
+    name: Performance · k6 Smoke Tests
     runs-on: ubuntu-latest
-    needs: [ security, infrastructure ]
+    needs: [ backend ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run k6 API smoke tests
+        uses: grafana/k6-action@v0.2.0
+        with:
+          filename: tests/perf/login-smoke.js
+        env:
+          BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
+
+
+  # ======================================================
+# DEPLOY — Railway (Frontend + Backend)
+# ======================================================
+  deploy:
+    name: Deploy & Monitoring (Railway)
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - frontend
+      - infrastructure
+      - security
+      - performance
+    if: github.ref == 'refs/heads/main'
 
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
       RAILWAY_BACKEND_SERVICE: ${{ secrets.RAILWAY_BACKEND_SERVICE }}
       RAILWAY_FRONTEND_SERVICE: ${{ secrets.RAILWAY_FRONTEND_SERVICE }}
+      BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
+      FRONTEND_BASE_URL: ${{ secrets.FRONTEND_BASE_URL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -120,14 +186,20 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Authenticate CLI
-        run: echo "$RAILWAY_TOKEN" | railway login --ci
-
-      - name: Link project
+    
+      - name: Link Railway Project
         run: railway link --project $RAILWAY_PROJECT_ID
 
+      # 📌 Deploy do backend
       - name: Deploy backend
         run: railway up --service $RAILWAY_BACKEND_SERVICE --detach
 
+      # 📌 Deploy do frontend
       - name: Deploy frontend
         run: railway up --service $RAILWAY_FRONTEND_SERVICE --detach
+
+      # ========== Monitoramento após Deploy ==========
+      - name: Health Monitoring
+        run: |
+          curl -f "$BACKEND_HEALTH_URL"
+          curl -f "$FRONTEND_BASE_URL"
