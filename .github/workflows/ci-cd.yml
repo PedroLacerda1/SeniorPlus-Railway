@@ -38,15 +38,12 @@ jobs:
           key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: m2-${{ runner.os }}-
 
-      # ========== Testes Unitários (JUnit) ==========
       - name: Run JUnit tests
         run: mvn -pl ${BACKEND_DIR} -am test
 
-      # ========== Testes de Integração (Testcontainers) ==========
       - name: Run integration tests (Spring Boot Test + Testcontainers)
         run: mvn -pl ${BACKEND_DIR} -am verify -DskipITs=false
 
-      # ========== Build do Backend ==========
       - name: Build backend
         run: mvn -pl ${BACKEND_DIR} -am package -DskipTests=true
 
@@ -72,14 +69,12 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         run: npm ci
 
-      # ========== ESLint + Jest ==========
       - name: Lint + Jest tests
         working-directory: ${{ env.FRONTEND_DIR }}
         run: |
           npm run lint
           npm test -- --watch=false
 
-      # ========== Build React ==========
       - name: Build frontend (React.js)
         working-directory: ${{ env.FRONTEND_DIR }}
         env:
@@ -130,17 +125,16 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # ========== OWASP Dependency Check (Maven + npm) ==========
       - name: Run OWASP dependency scan
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: bash tests/security/dependency-scan.sh || true
 
-      # ========== Basic JWT security validation ==========
       - name: Run JWT structure/expiration validation
         run: node tests/security/jwt-validate.js
         env:
           TEST_JWT: ${{ secrets.TEST_JWT }}
+
 
   # ======================================================
   # PERFORMANCE — k6 (Login + API Smoke)
@@ -162,8 +156,8 @@ jobs:
 
 
   # ======================================================
-# DEPLOY — Railway (Frontend + Backend)
-# ======================================================
+  # DEPLOY — Railway (Frontend + Backend)
+  # ======================================================
   deploy:
     name: Deploy & Monitoring (Railway)
     runs-on: ubuntu-latest
@@ -186,12 +180,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Instala CLI oficial via script (sempre funciona)
       - name: Install Railway CLI
-        run: npm install -g @railway/cli
+        run: |
+          curl -fsSL https://railway.app/install.sh | bash
+          echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
-    
+      # Autenticação correta, sem --ci
       - name: Authenticate Railway
-        run: echo $RAILWAY_TOKEN | railway login --ci
+        run: |
+          export RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }}
+          railway login --token
 
       - name: Link Railway Project
         run: railway link --project $RAILWAY_PROJECT_ID
@@ -202,8 +201,6 @@ jobs:
       - name: Deploy frontend
         run: railway up --service $RAILWAY_FRONTEND_SERVICE --detach
 
-
-      # ========== Monitoramento após Deploy ==========
       - name: Health Monitoring
         run: |
           curl -f "$BACKEND_HEALTH_URL"
