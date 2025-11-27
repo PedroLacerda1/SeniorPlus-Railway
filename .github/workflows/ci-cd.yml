@@ -156,10 +156,10 @@ jobs:
 
 
   # ======================================================
-  # MONITORAMENTO — Railway Status + Saúde
+  # MONITORAMENTO — Health Checks + Logs
   # ======================================================
-  deploy:
-    name: Railway · Monitoring Only
+  monitoring:
+    name: Monitoring · Health Checks & Logs
     runs-on: ubuntu-latest
     needs:
       - backend
@@ -170,45 +170,62 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
       BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
       FRONTEND_BASE_URL: ${{ secrets.FRONTEND_BASE_URL }}
+      BACKEND_LOG_URL: ${{ secrets.BACKEND_LOG_URL }}
+      FRONTEND_LOG_URL: ${{ secrets.FRONTEND_LOG_URL }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
       # ============================
-      # LINK DO PROJETO
+      # HEALTH CHECK — BACKEND
       # ============================
-      - name: Railway Login (CI)
-        run: railway login --ci
-
-
-      # ============================
-      # STATUS DO PROJETO
-      # ============================
-      - name: Railway · Project Status
-        run: railway status
-
-      # ============================
-      # STATUS DOS SERVIÇOS
-      # ============================
-      - name: Railway · Services Status
-        run: railway services
-
-      # ============================
-      # HEALTH CHECK
-      # ============================
-      - name: Health Monitoring
+      - name: Backend Health Check
         run: |
           echo "Checking backend..."
-          curl -f "$BACKEND_HEALTH_URL"
-          echo "Backend OK!"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_HEALTH_URL")
+          if [ "$STATUS" -ne 200 ]; then
+            echo "❌ Backend health endpoint failed with status $STATUS"
+            exit 1
+          fi
+          echo "✅ Backend is healthy!"
 
+      # ============================
+      # HEALTH CHECK — FRONTEND
+      # ============================
+      - name: Frontend Health Check
+        run: |
           echo "Checking frontend..."
-          curl -f "$FRONTEND_BASE_URL"
-          echo "Frontend OK!"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_BASE_URL")
+          if [ "$STATUS" -ne 200 ]; then
+            echo "❌ Frontend unavailable! Status $STATUS"
+            exit 1
+          fi
+          echo "✅ Frontend is healthy!"
+
+      # ============================
+      # LOG CHECK — BACKEND
+      # ============================
+      - name: Backend Logs Check
+        run: |
+          echo "Fetching backend logs..."
+          curl -s "$BACKEND_LOG_URL" -o backend_logs.txt
+          if grep -Ei "error|fatal|panic|exception" backend_logs.txt; then
+            echo "❌ Errors found in backend logs!"
+            exit 1
+          fi
+          echo "✅ Backend logs are clean!"
+
+      # ============================
+      # LOG CHECK — FRONTEND
+      # ============================
+      - name: Frontend Logs Check
+        run: |
+          echo "Fetching frontend logs..."
+          curl -s "$FRONTEND_LOG_URL" -o frontend_logs.txt
+          if grep -Ei "error|fatal|panic|exception" frontend_logs.txt; then
+            echo "❌ Errors found in frontend logs!"
+            exit 1
+          fi
+          echo "✅ Frontend logs are clean!"
