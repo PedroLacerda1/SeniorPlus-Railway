@@ -182,19 +182,25 @@ jobs:
         run: npm install -g @railway/cli
 
       # ============================
+      # LINK DO PROJETO
+      # ============================
+      - name: Link Railway Project
+        run: railway link $RAILWAY_PROJECT_ID
+
+      # ============================
       # STATUS DO PROJETO
       # ============================
       - name: Railway · Project Status
-        run: railway status --project $RAILWAY_PROJECT_ID
+        run: railway status
 
       # ============================
       # STATUS DOS SERVIÇOS
       # ============================
       - name: Railway · Services Status
-        run: railway environments --project $RAILWAY_PROJECT_ID
+        run: railway services
 
       # ============================
-      # HEALTH CHECK (backend + frontend)
+      # HEALTH CHECK
       # ============================
       - name: Health Monitoring
         run: |
