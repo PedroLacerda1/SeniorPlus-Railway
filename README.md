@@ -194,3 +194,5 @@ nixpacks.toml
 .dockerignore
 .gitignore
 ```
+## 📬 Contato
+Caso queira suporte, sugestões ou melhorias na documentação, abra uma **issue** ou envie um **PR**.
