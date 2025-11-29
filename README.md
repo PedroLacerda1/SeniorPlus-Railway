@@ -1,4 +1,3 @@
-{"id":"17492","variant":"standard","title":"README SeniorPlus (PT-BR)"}
 # SeniorPlus
 
 O **SeniorPlus** é um sistema completo voltado para gestão de cuidados, interação entre cuidadores e idosos, programação de lembretes, dashboards, comunicação, segurança e automação.
