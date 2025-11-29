@@ -194,18 +194,3 @@ nixpacks.toml
 .dockerignore
 .gitignore
 ```
-
----
-
-## 📄 Licença
-Disponível no arquivo `LICENSE` (se aplicável).
-
----
-
-## 🤝 Contribuições
-Pull requests são bem-vindos!
-
----
-
-## 📬 Contato
-Caso queira suporte, sugestões ou melhorias na documentação, abra uma **issue** ou envie um **PR**.
