@@ -1,6 +1,6 @@
-# SeniorPlus
+# Senior+
 
-O **SeniorPlus** é um sistema completo voltado para gestão de cuidados, interação entre cuidadores e idosos, programação de lembretes, dashboards, comunicação, segurança e automação.
+O **Senior+** é um sistema completo voltado para gestão de cuidados, interação entre cuidadores e idosos, programação de lembretes, dashboards, comunicação, segurança e automação.
 
 O projeto é composto por:
 - **Frontend (React 19)**
