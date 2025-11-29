@@ -1,256 +1,176 @@
-SeniorPlus
+{"id":"17492","variant":"standard","title":"README SeniorPlus (PT-BR)"}
+# SeniorPlus
+
+O **SeniorPlus** é um sistema completo voltado para gestão de cuidados, interação entre cuidadores e idosos, programação de lembretes, dashboards, comunicação, segurança e automação.
+
+O projeto é composto por:
+- **Frontend (React 19)**
+- **Backend (Spring Boot + Security + JWT)**
+- **Pasta dedicada a testes de performance e segurança**
+- **Infraestrutura completa com Docker, Railway e Nixpacks**
+
+---
+
+## 📌 Sumário
+- [Visão Geral](#-visão-geral)
+- [Arquitetura do Projeto](#-arquitetura-do-projeto)
+- [Tecnologias — Frontend](#-tecnologias--frontend)
+- [Tecnologias — Backend](#-tecnologias--backend)
+- [Tecnologias — Testes e Segurança](#-tecnologias--testes-e-segurança)
+- [Infraestrutura, Deploy e DevOps](#-infraestrutura-deploy-e-devops)
+- [Estrutura do Repositório](#-estrutura-do-repositório)
+- [Licença](#-licença)
+- [Contribuições](#-contribuições)
+- [Contato](#-contato)
+
+---
+
+## 🚀 Visão Geral
+
+O SeniorPlus combina uma arquitetura escalável e moderna utilizando:
+
+- **React 19** no frontend  
+- **Spring Boot 3 + Spring Security + JWT** no backend  
+- **Docker multistage** (Node → Build → Nginx)  
+- **Testes automatizados** (Jest, JUnit, scripts JS)  
+- **Scans de segurança e scripts especializados**  
+- **Deploy via Railway / Nixpacks**  
+- **Contextos React, API centralizada e suporte PWA**
+
+---
+
+## 🏗 Arquitetura do Projeto
+
+```
+frontend/   → SPA em React (auth, cuidador, idoso, landing)
+backend/    → API REST com Spring Boot + Security
+tests/      → Testes de performance, segurança e validações
+docker/     → Arquivos Docker + nginx.conf
+infra/      → railway.json, nixpacks.toml, scripts de build e execução
+```
+
+---
+
+## 🎨 Tecnologias — Frontend
+
+### 📚 Linguagens e Frameworks
+- **React 19**  
+  - Evidência: `package.json`, `ReactDOM.createRoot`
+- **React Router v7**
+  - BrowserRouter em `src/main.jsx`
+- **Create React App / react-scripts**
+- **Node.js 20** (via Dockerfile)
+
+### 🧰 Ferramentas e Configurações
+- **npm** (scripts, lockfile)
+- **ESLint** (`.eslintrc.json`)
+- **Jest + Testing Library**
+- **PWA**
+  - `manifest.json`
+- **Variáveis de ambiente**
+  - `REACT_APP_API_URL`
+  - Arquivos: `.env`, `.env.production`
+
+### 🎨 Estilos
+- CSS modular por componente (`styles/*.css`)
+- CSS global (`main.css`)
+
+### 🧩 Bibliotecas
+- uuid  
+- react-icons / lucide-react  
+- emoji-picker-react  
+- react-calendar  
+- date-fns  
+- web-vitals  
+
+### 🔌 Contextos e Hooks
+Presentes em `/contexts`:
+- `AuthContext.jsx`
+- `ToastContext.jsx`
+- `ThemeContext.jsx`
+- `ChatContext.jsx`
+
+Funções principais:
+- Autenticação + JWT
+- Dark mode
+- Toasts
+- Chat
+
+### 🗂 Estrutura do frontend
+```
+/tela-auth
+/tela-cuidador
+/tela-idoso
+/tela-landing
+/components
+```
 
-O SeniorPlus é um sistema completo voltado para gestão de cuidados, interação entre cuidadores e idosos, programação de lembretes, dashboards, comunicação, segurança e automação.
-O projeto é composto por Frontend (React), Backend (Spring Boot) e uma pasta dedicada a testes de performance e segurança, além de toda infraestrutura DevOps com Docker, Railway e Nixpacks.
+---
 
-📌 Sumário
+## 🔧 Tecnologias — Backend
 
-Visão Geral
+### 🖥 Stack Principal
+- **Java + Spring Boot**
+- **Spring MVC** (controllers)
+- **Spring Security + JWT**
+  - `security/`, `JwtProperties.java`
 
-Arquitetura do Projeto
+### 🗄 Persistência e Banco
+- **Flyway** (migrações SQL)
+  - `/resources/db/migration/*.sql`
+- **Spring Data JPA**
+- Configuração via:
+  - `application.properties`
+  - `.env`
 
-Tecnologias — Frontend
+### 📬 Integrações Externas
+- **WhatsApp**
+  - `WhatsAppController.java`
+- **Envio de e-mail** (Java Mail)
 
-Tecnologias — Backend
+### 🧪 Testes Backend
+- JUnit + Spring Test  
+  - `SeniorplusApplicationTests.java`
 
-Tecnologias — Testes e Segurança
+---
 
-Infraestrutura, Deploy e DevOps
+## 🛡 Tecnologias — Testes e Segurança
 
-Estrutura do Repositório
+Local: `/tests`
 
-🚀 Visão Geral
+### 📌 Scripts JS (security/perf)
+- `perf/login-smoke.js`
+- `security/filter-audit.js`
+- `security/jwt-validate.js`
 
-O SeniorPlus combina uma arquitetura moderna e escalável usando:
+### 🔒 Auditorias
+- `dependency-scan.sh`  
+  Script para análise de vulnerabilidades.
 
-React 19 no frontend
+---
 
-Spring Boot + Spring Security + JWT no backend
+## 🧱 Infraestrutura, Deploy e DevOps
 
-Docker (multistage com Node + Nginx)
+### 🐳 Docker
+- Dockerfile do frontend (multistage)
+- Dockerfile do backend
+- `.dockerignore`
 
-Testes automatizados (Jest, JUnit, scripts JS, scans de segurança)
+### 🚀 Deploy
+- **Railway** (`railway.json`)
+- **Nixpacks** (`nixpacks.toml`)
 
-Deploy via Railway/Nixpacks
+### 📜 Scripts do projeto
+- `build.sh`
+- `start.sh`
+- `run_with_env.ps1`
+- Logs e configs de ambiente
 
-Múltiplos contextos React, APIs integradas e suporte a PWA
+---
 
-🏗 Arquitetura do Projeto
-frontend/      → SPA em React (telas: auth, cuidador, idoso, landing)
-backend/       → API REST com Spring Boot
-tests/         → Testes de segurança, performance e validações
-docker/        → Arquivos Docker + nginx.conf
-infra/         → railway.json, nixpacks.toml, scripts de build
-🎨 Tecnologias — Frontend
-📚 Linguagens e Frameworks
+## 📁 Estrutura do Repositório (resumo)
 
-React 19
-
-Evidência: package.json
-
-Uso: ReactDOM.createRoot
-
-React Router v7
-
-Evidência: react-router-dom no package.json
-
-Uso: BrowserRouter
-
-Create React App / react-scripts
-
-Scripts no package.json
-
-Estrutura do CRA: public/index.html
-
-Node.js 20 (Docker)
-
-Evidência: Dockerfile
-
-🧰 Ferramentas e Configurações
-
-npm
-
-package-lock.json, scripts e uso no Docker
-
-ESLint
-
-Config: .eslintrc.json
-
-Jest + Testing Library
-
-Dependências: package.json
-
-Teste exemplo: App.test.js
-
-PWA
-
-Arquivo: manifest.json
-
-Variáveis de ambiente / API
-
-REACT_APP_API_URL
-
-Arquivos: .env, .env.production
-
-Endpoint centralizado: api.js
-
-🎨 Estilos
-
-CSS modular por componente (styles/*.css)
-
-Ex.: LoadingSpinner.css
-
-CSS global: main.css
-
-🧩 Bibliotecas de UI / Utilidades
-
-uuid
-
-react-icons, lucide-react
-
-emoji-picker-react
-
-react-calendar
-
-date-fns
-
-web-vitals
-
-🔌 Contextos e Hooks
-
-Presentes em: AuthContext.jsx, ToastContext.jsx, ThemeContext.jsx, ChatContext.jsx
-
-Incluem:
-
-Autenticação
-
-Dark mode
-
-Notificações Toast
-
-Chat integrado
-
-🗂 Estrutura modular do frontend
-
-tela-auth/
-
-tela-cuidador/
-
-tela-idoso/
-
-tela-landing/
-
-Componentes reutilizáveis (components/)
-
-Exemplo: Dashboard.jsx
-
-🔧 Tecnologias — Backend
-🖥 Principal stack
-
-Java + Spring Boot
-
-Evidência: pom.xml, SeniorplusApplication.java
-
-Spring MVC
-
-Controllers em controller/
-
-Spring Security + JWT
-
-Evidência: security/, JwtProperties.java
-
-🗄 Persistência e Banco de Dados
-
-Flyway (migrações SQL)
-
-src/main/resources/db/migration/*.sql
-
-Spring Data JPA
-
-Repositórios e modelos em /model e /repository
-
-Configuração por properties/env
-
-application.properties
-
-.env
-
-📬 Integrações externas
-
-WhatsApp
-
-WhatsAppController.java
-
-ZapWhatsAppProperties.java
-
-Envio de e-mail (Java Mail)
-
-TestMailConfig.java
-
-🧪 Testes Backend
-
-JUnit + Spring Test
-
-src/test/java/.../SeniorplusApplicationTests.java
-
-🛡 Tecnologias — Testes e Segurança
-
-Local: /tests
-
-📌 JavaScript para testes de performance/segurança
-
-Arquivos:
-
-perf/login-smoke.js
-
-security/filter-audit.js
-
-security/jwt-validate.js
-
-Uso provável:
-
-k6
-
-Node scripts personalizados
-
-🔒 Auditorias
-
-dependency-scan.sh
-
-Shell script para análise de vulnerabilidades
-
-🧱 Infraestrutura, Deploy e DevOps
-🐳 Docker
-
-Dockerfile do frontend (Node → build → Nginx)
-
-Dockerfile do backend
-
-.dockerignore
-
-🚀 Deploy
-
-Railway
-
-Arquivo: railway.json
-
-Nixpacks
-
-Config: nixpacks.toml
-
-📜 Scripts
-
-build.sh
-
-start.sh
-
-run_with_env.ps1
-
-backend_env.err
-
-backend.err
-
-📁 Estrutura do Repositório (resumo)
+```
 /frontend
   package.json
   src/
@@ -261,10 +181,9 @@ backend.err
 
 /backend
   pom.xml
-  src/main/java
+  src/main/java/
   src/main/resources/application.properties
   Dockerfile
-  scripts (build, start)
 
 /tests
   perf/
@@ -275,14 +194,19 @@ railway.json
 nixpacks.toml
 .dockerignore
 .gitignore
-📄 Licença
+```
 
-Disponível no arquivo LICENSE (se aplicável).
+---
 
-🤝 Contribuições
+## 📄 Licença
+Disponível no arquivo `LICENSE` (se aplicável).
 
+---
+
+## 🤝 Contribuições
 Pull requests são bem-vindos!
 
-📬 Contato
+---
 
-Caso queira suporte, sugestões ou melhorias na documentação, fique à vontade para abrir uma issue ou PR.
+## 📬 Contato
+Caso queira suporte, sugestões ou melhorias na documentação, abra uma **issue** ou envie um **PR**.
