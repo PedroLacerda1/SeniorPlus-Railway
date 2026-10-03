@@ -4,16 +4,16 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Medicamento;
 import org.example.seniorplus.repository.MedicamentoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class MedicamentoService {
 
-    @Autowired
-    private MedicamentoRepository medicamentoRepository;
+    private final MedicamentoRepository medicamentoRepository;
 
     public List<Medicamento> listarPorCpf(String cpf) {
         return medicamentoRepository.findByCpfOrderByNomeMedicamentoAsc(normalizarCpf(cpf));

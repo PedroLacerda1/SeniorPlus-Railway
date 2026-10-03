@@ -38,18 +38,8 @@ public class Endereco extends BaseEntity {
     @Column(name = "cuidador_id")
     private String cuidadorCpf;
 
-    public Endereco() {}
-
-    public Endereco(String idosoCpf, String rua, String numero, String bairro, String cidade, 
-                String estado, String cep, String complemento) {
-        this.idosoCpf = idosoCpf;
-        this.rua = rua;
-        this.numero = numero;
-        this.bairro = bairro;
-        this.cidade = cidade;
-        this.estado = estado;
-        this.cep = cep;
-        this.complemento = complemento;
+    public Endereco() {
+        // Required by JPA for entity materialization.
     }
 
     public Long getId() {

@@ -1,5 +1,5 @@
 [variables]
-NIXPACKS_JAVA_VERSION = "17"
+NIXPACKS_JAVA_VERSION = "21"
 
 [phases.build]
 dependsOn = ['install']

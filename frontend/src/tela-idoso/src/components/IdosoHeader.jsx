@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { Moon, Sun } from "lucide-react"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
+import { api } from "../../../tela-auth/src/services/api"
 import { useTheme } from "../../../contexts/ThemeContext"
 import NotificationCenter from "../../../components/NotificationCenter"
 import "../styles/Header.css"
@@ -13,6 +14,7 @@ export default function IdosoHeader() {
   const userContext = useUser()
   const elderlyData = userContext?.elderlyData
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [pendingRequestCount, setPendingRequestCount] = useState(0)
   const { darkMode, toggleDarkMode } = useTheme()
 
   const { name: displayName, avatarUrl, initials } = useResidentIdentity({
@@ -25,6 +27,34 @@ export default function IdosoHeader() {
     if (currentUser?.role === "caregiver") return "Assistido"
     return "Perfil"
   }, [currentUser?.role])
+
+  useEffect(() => {
+    if (currentUser?.role !== "elderly") {
+      setPendingRequestCount(0)
+      return undefined
+    }
+
+    let active = true
+    const refreshPendingRequests = async () => {
+      try {
+        const requests = await api.get("/api/v1/vinculos/solicitacoes")
+        if (active) {
+          setPendingRequestCount(
+            Array.isArray(requests) ? requests.filter((request) => request.status === "PENDING").length : 0,
+          )
+        }
+      } catch {
+        // Keep the last successful count while the API is temporarily unavailable.
+      }
+    }
+
+    refreshPendingRequests()
+    const intervalId = window.setInterval(refreshPendingRequests, 30000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
+  }, [currentUser?.cpf, currentUser?.id, currentUser?.role])
 
   return (
     <>
@@ -53,7 +83,7 @@ export default function IdosoHeader() {
           <button
             type="button"
             className="idoso-header__avatar"
-            aria-label="Abrir menu do perfil"
+            aria-label={`Abrir menu do perfil${pendingRequestCount ? `, ${pendingRequestCount} solicitações pendentes` : ""}`}
             onClick={() => setSidebarOpen((open) => !open)}
           >
             {avatarUrl ? (
@@ -76,6 +106,11 @@ export default function IdosoHeader() {
             >
               {initials || "ID"}
             </span>
+            {pendingRequestCount > 0 && (
+              <span className="idoso-header__request-badge" aria-hidden="true">
+                {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -85,6 +120,7 @@ export default function IdosoHeader() {
         residentName={displayName}
         residentAvatar={avatarUrl}
         residentInitials={initials}
+        pendingRequestCount={pendingRequestCount}
       />
     </>
   )

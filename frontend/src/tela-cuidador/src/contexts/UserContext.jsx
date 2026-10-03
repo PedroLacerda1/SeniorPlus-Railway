@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect } from "react"
+import { createContext, useState, useContext, useEffect, useCallback } from "react"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 
 const UserContext = createContext()
@@ -7,72 +7,78 @@ export const useUser = () => useContext(UserContext)
 
 export const UserProvider = ({ children }) => {
   const { currentUser } = useAuth()
+  const accountKey = currentUser?.cpf || currentUser?.id || currentUser?.email || currentUser?.username || null
+  const storageKey = accountKey ? `seniorplus:elderly-data:${accountKey}` : null
 
-  const [elderlyData, setElderlyData] = useState(() => {
-    // Verifica se o usuário está autenticado
-    // O AuthProvider persiste o token em localStorage com a chave 'authToken'
-    const isAuthenticated = localStorage.getItem("authToken") !== null || localStorage.getItem("isLoggedIn") === 'true'
+  const [elderlyState, setElderlyState] = useState({ accountKey: null, data: null })
+  const elderlyData = elderlyState.accountKey === accountKey ? elderlyState.data : null
 
-    if (!isAuthenticated) {
-      return null
-    }
-
-    // Tenta carregar dados do idoso do localStorage
-    const savedData = localStorage.getItem("elderlyData")
-    return savedData ? JSON.parse(savedData) : null
-  })
+  const isCareGiver = useCallback(() => {
+    if (!currentUser) return false
+    return currentUser.role === "caregiver"
+  }, [currentUser])
 
   // Atualiza elderlyData quando currentUser mudar
   useEffect(() => {
-    if (!currentUser) {
-      setElderlyData(null)
+    if (!accountKey || !storageKey) {
+      setElderlyState({ accountKey: null, data: null })
       return
     }
 
-    // Se não houver dados do idoso e o usuário for cuidador, inicializa com dados vazios
-    if (!elderlyData && isCareGiver()) {
-      const emptyData = {
-        name: "",
-        id: "",
-        age: "",
-        cpf: "",
-        bloodType: "",
-        maritalStatus: "",
-        gender: "",
-        allergies: [],
-        address: "",
-        phone: "",
-        email: "",
-        emergencyContact: "",
-        emergencyContactName: "",
-        medicalConditions: [],
-        medications: [],
+    try {
+      const raw = localStorage.getItem(storageKey)
+      if (raw) {
+        setElderlyState({ accountKey, data: JSON.parse(raw) })
+        return
       }
-      setElderlyData(emptyData)
-      localStorage.setItem("elderlyData", JSON.stringify(emptyData))
+    } catch (error) {
+      console.warn("Falha ao carregar dados do idoso da conta atual", error)
     }
-  }, [currentUser, elderlyData])
 
-  // Salva elderlyData no localStorage sempre que mudar
+    const emptyData = isCareGiver() ? {
+      name: "",
+      id: "",
+      age: "",
+      cpf: "",
+      bloodType: "",
+      maritalStatus: "",
+      gender: "",
+      allergies: [],
+      address: "",
+      phone: "",
+      email: "",
+      emergencyContact: "",
+      emergencyContactName: "",
+      medicalConditions: [],
+      medications: [],
+    } : null
+    setElderlyState({ accountKey, data: emptyData })
+  }, [accountKey, isCareGiver, storageKey])
+
+  // Persist only data owned by the currently authenticated account.
   useEffect(() => {
-    if (elderlyData) {
-      localStorage.setItem("elderlyData", JSON.stringify(elderlyData))
+    if (!storageKey || elderlyState.accountKey !== accountKey || !elderlyState.data) {
+      return
     }
-  }, [elderlyData])
+    localStorage.setItem(storageKey, JSON.stringify(elderlyState.data))
+  }, [accountKey, elderlyState, storageKey])
+
+  const setElderlyData = useCallback((update) => {
+    if (!accountKey) return
+    setElderlyState((previous) => {
+      const previousData = previous.accountKey === accountKey ? previous.data : null
+      const data = typeof update === "function" ? update(previousData) : update
+      return { accountKey, data }
+    })
+  }, [accountKey])
 
   // Atualiza dados do idoso de forma merge
-  const updateElderlyData = (data) => {
+  const updateElderlyData = useCallback((data) => {
     setElderlyData((prev) => {
       const updatedData = { ...prev, ...data }
       return updatedData
     })
-  }
-
-  // Função para verificar se o usuário atual é cuidador
-  const isCareGiver = () => {
-    if (!currentUser) return false
-    return currentUser.role === "caregiver"
-  }
+  }, [setElderlyData])
 
   // Função para verificar se o usuário atual é idoso
   const isElderly = () => {

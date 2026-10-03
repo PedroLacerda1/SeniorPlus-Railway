@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 public class ResetSenhaService {
@@ -20,7 +22,7 @@ public class ResetSenhaService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional
+    @Transactional(rollbackFor = MessagingException.class)
     public void solicitarResetSenha(String email) throws MessagingException {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new AuthenticationException("Usuário não encontrado"));
@@ -29,11 +31,13 @@ public class ResetSenhaService {
         resetTokenRepository.deleteByUsuarioId(usuario.getId());
 
         // Gera novo token
-        ResetSenhaToken resetToken = ResetSenhaToken.gerarToken(usuario);
+        ResetSenhaToken resetToken = Objects.requireNonNull(ResetSenhaToken.gerarToken(usuario));
         resetTokenRepository.save(resetToken);
 
         // Envia email
-        emailService.enviarEmailResetSenha(usuario.getEmail(), resetToken.getToken());
+        String usuarioEmail = Objects.requireNonNull(usuario.getEmail());
+        String token = Objects.requireNonNull(resetToken.getToken());
+        emailService.enviarEmailResetSenha(usuarioEmail, token);
     }
 
     @Transactional

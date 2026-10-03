@@ -36,7 +36,7 @@ const CalendarioAgenda = () => {
   // Events context yields caregiver-managed events.
   const { events } = useEvents() || {};
   const [mesAtual, setMesAtual] = useState(new Date());
-  const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
+  const [diaSelecionado, setDiaSelecionado] = useState(null);
 
   const eventosNormalizados = useMemo(() => {
     if (!events || events.length === 0) return [];

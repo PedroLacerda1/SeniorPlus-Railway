@@ -1,6 +1,6 @@
 # 🧓 SeniorPlus API
 
-**API RESTful para gerenciamento de idosos, cuidadores, medicamentos, consultas, exames, dietas e muito mais.**  
+**API RESTful para gerenciamento de idosos, cuidadores, medicamentos, consultas e exames.**
 *Segurança com JWT • MongoDB • Documentação com Swagger*
 
 ---
@@ -29,6 +29,12 @@
   - `/api/v1/auth/**`
   - `/api/v1/reset-senha/**`
   - Swagger UI
+
+## ⏰ Lembretes de Medicamentos
+
+No Docker Compose, o agendador publica lembretes na fila durável `seniorplus.medication-reminders`. O consumidor envia pelo WhatsApp; falhas são tentadas até três vezes e, depois, encaminhadas para `seniorplus.medication-reminders.dlq`. A tabela `medication_reminder_deliveries` registra chaves já entregues para evitar reenvio em redelivery.
+
+Para habilitar fora do Compose, configure `APP_REMINDERS_RABBITMQ_ENABLED=true` e as variáveis `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`, `SPRING_RABBITMQ_USERNAME` e `SPRING_RABBITMQ_PASSWORD`. Com a flag desativada, o backend mantém o envio direto como fallback.
 
 ---
 
@@ -94,26 +100,6 @@ GET    /api/v1/exame/{cpf}<br>
 POST   /api/v1/exame<br>
 PUT    /api/v1/exame/{cpf}<br>
 DELETE /api/v1/exame/{cpf}<br>
-
----
-
-### 🥗 Dieta
-
-GET    /api/v1/dieta<br>
-GET    /api/v1/dieta/{cpf}<br>
-POST   /api/v1/dieta<br>
-PUT    /api/v1/dieta/{cpf}<br>
-DELETE /api/v1/dieta/{cpf}<br>
-
----
-
-### 🏋️ Exercício
-
-GET    /api/v1/exercicio<br>
-GET    /api/v1/exercicio/{cpf}<br>
-POST   /api/v1/exercicio<br>
-PUT    /api/v1/exercicio/{cpf}<br>
-DELETE /api/v1/exercicio/{cpf}<br>
 
 ---
 

@@ -1,22 +1,23 @@
 package org.example.seniorplus.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Evento;
 import org.example.seniorplus.domain.Idoso;
 import org.example.seniorplus.repository.EventoRepository;
 import org.example.seniorplus.repository.IdosoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class EventoService {
-    
-    @Autowired
-    private EventoRepository eventoRepository;
 
-    @Autowired
-    private IdosoRepository idosoRepository;
+    private static final String EVENTO_ID_NULO = "Evento id não pode ser nulo";
+    
+    private final EventoRepository eventoRepository;
+
+    private final IdosoRepository idosoRepository;
 
     public List<Evento> listarEventos(String cpf) {
         String normalizado = normalizarCpf(cpf);
@@ -37,7 +38,7 @@ public class EventoService {
     }
 
     public Evento atualizarEvento(Long id, Evento atualizado) {
-        Objects.requireNonNull(id, "Evento id não pode ser nulo");
+        Objects.requireNonNull(id, EVENTO_ID_NULO);
         Evento existente = eventoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Evento não encontrado: " + id));
 
@@ -57,7 +58,7 @@ public class EventoService {
     }
 
     public void atualizarStatusEvento(Long eventoId, String novoStatus) {
-        Objects.requireNonNull(eventoId, "Evento id não pode ser nulo");
+        Objects.requireNonNull(eventoId, EVENTO_ID_NULO);
         eventoRepository.findById(eventoId).ifPresent(evento -> {
             evento.setStatus(novoStatus);
             eventoRepository.save(evento);
@@ -65,7 +66,7 @@ public class EventoService {
     }
 
     public void deletarEvento(Long id) {
-        Objects.requireNonNull(id, "Evento id não pode ser nulo");
+        Objects.requireNonNull(id, EVENTO_ID_NULO);
         eventoRepository.deleteById(id);
     }
 

@@ -33,14 +33,33 @@ function Emergencia() {
   const { showSuccess, showInfo, showError } = useToast()
   const { notifications, notifyEmergencyAction, markAsRead } = useNotification()
   const { currentUser } = useAuth()
+  const residentStorageCpf = normalizeCpf(
+    elderlyData?.cpf ||
+      currentUser?.assistedPerson?.cpf ||
+      (currentUser?.role === "elderly" ? currentUser?.cpf : null),
+  )
+  const accountIdentity = currentUser?.id || currentUser?.email || currentUser?.username
+  const emergencyContactsStorageKey = residentStorageCpf
+    ? `emergencyCustomNumbers:${residentStorageCpf}`
+    : accountIdentity
+      ? `emergencyCustomNumbers:account:${accountIdentity}`
+      : null
   const [calling, setCalling] = useState(false)
   const [sendingSMS, setSendingSMS] = useState(false)
   const [showEmergencyInfo, setShowEmergencyInfo] = useState(false)
   const [showAddNumberForm, setShowAddNumberForm] = useState(false)
-  const [customNumbers, setCustomNumbers] = useState(() => {
-    const savedNumbers = localStorage.getItem("emergencyCustomNumbers")
-    return savedNumbers ? JSON.parse(savedNumbers) : []
-  })
+  const [customContactsState, setCustomContactsState] = useState({ storageKey: null, contacts: [] })
+  const customNumbers = useMemo(
+    () => customContactsState.storageKey === emergencyContactsStorageKey ? customContactsState.contacts : [],
+    [customContactsState, emergencyContactsStorageKey],
+  )
+  const setCustomNumbers = useCallback((update) => {
+    setCustomContactsState((previous) => {
+      const current = previous.storageKey === emergencyContactsStorageKey ? previous.contacts : []
+      const contacts = typeof update === "function" ? update(current) : update
+      return { storageKey: emergencyContactsStorageKey, contacts }
+    })
+  }, [emergencyContactsStorageKey])
   const [remoteContacts, setRemoteContacts] = useState([])
   const [loadingContacts, setLoadingContacts] = useState(false)
   const [savingContact, setSavingContact] = useState(false)
@@ -50,6 +69,24 @@ function Emergencia() {
     phone: "",
     description: "",
   })
+
+  useEffect(() => {
+    if (!emergencyContactsStorageKey) {
+      setCustomContactsState({ storageKey: null, contacts: [] })
+      return
+    }
+    try {
+      const stored = localStorage.getItem(emergencyContactsStorageKey)
+      const parsed = stored ? JSON.parse(stored) : []
+      setCustomContactsState({
+        storageKey: emergencyContactsStorageKey,
+        contacts: Array.isArray(parsed) ? parsed : [],
+      })
+    } catch (error) {
+      console.warn("Falha ao carregar contatos personalizados", error)
+      setCustomContactsState({ storageKey: emergencyContactsStorageKey, contacts: [] })
+    }
+  }, [emergencyContactsStorageKey])
 
   const elderlyCpf = useMemo(
     () =>
@@ -142,8 +179,9 @@ function Emergencia() {
   }
 
   useEffect(() => {
-    localStorage.setItem("emergencyCustomNumbers", JSON.stringify(customNumbers))
-  }, [customNumbers])
+    if (!emergencyContactsStorageKey || customContactsState.storageKey !== emergencyContactsStorageKey) return
+    localStorage.setItem(emergencyContactsStorageKey, JSON.stringify(customNumbers))
+  }, [customContactsState, customNumbers, emergencyContactsStorageKey])
 
   const handleEmergencyCall = (contact) => {
     setCalling(true)

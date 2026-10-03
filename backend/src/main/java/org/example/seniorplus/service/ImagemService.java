@@ -1,17 +1,19 @@
 package org.example.seniorplus.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Imagem;
 import org.example.seniorplus.repository.ImagemRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.example.seniorplus.service.exception.ServiceOperationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class ImagemService {
 
-    @Autowired
-    private ImagemRepository imagemRepository;
+    private final ImagemRepository imagemRepository;
 
     // Listar todas as imagens
     public List<Imagem> listarTodas() {
@@ -25,12 +27,14 @@ public class ImagemService {
 
     // Buscar imagem por ID
     public Imagem buscarPorId(Long id) {
+        Objects.requireNonNull(id, "ID da imagem não pode ser nulo");
         return imagemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Imagem não encontrada com ID: " + id));
+                .orElseThrow(() -> new ServiceOperationException("Imagem não encontrada com ID: " + id));
     }
 
     // Salvar nova imagem
     public Imagem salvar(Imagem imagem) {
+        Objects.requireNonNull(imagem, "Imagem não pode ser nula");
         return imagemRepository.save(imagem);
     }
 
@@ -49,6 +53,6 @@ public class ImagemService {
     // Deletar imagem por ID
     public void deletar(Long id) {
         Imagem imagem = buscarPorId(id);
-        imagemRepository.delete(imagem);
+        imagemRepository.delete(Objects.requireNonNull(imagem));
     }
 }

@@ -3,7 +3,7 @@ package org.example.seniorplus.domain;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.util.ArrayList;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,8 +26,7 @@ public class Cuidador extends BaseEntity {
     @Column(unique = true)
     private String email;
     
-    @Temporal(TemporalType.DATE)
-    private Date dataNascimento;
+    private LocalDate dataNascimento;
     
     @Column(length = 20)
     private String telefone;
@@ -38,7 +37,7 @@ public class Cuidador extends BaseEntity {
 
     public Cuidador() {}
 
-    public Cuidador(String cpf, String rg, String nome, String email, Date dataNascimento, String telefone) {
+    public Cuidador(String cpf, String rg, String nome, String email, LocalDate dataNascimento, String telefone) {
         this.cpf = cpf;
         this.rg = rg;
         this.nome = nome;
@@ -79,11 +78,11 @@ public class Cuidador extends BaseEntity {
         this.email = email;
     }
 
-    public Date getDataNascimento() {
+    public LocalDate getDataNascimento() {
         return dataNascimento;
     }
 
-    public void setDataNascimento(Date dataNascimento) {
+    public void setDataNascimento(LocalDate dataNascimento) {
         this.dataNascimento = dataNascimento;
     }
 

@@ -158,6 +158,22 @@
   text-align: left;
 }
 
+.idoso-sidebar .nav-link .sidebar-nav__badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 .idoso-sidebar .nav-link:hover,
 .idoso-sidebar .nav-link:focus-visible {
   transform: translateX(4px);

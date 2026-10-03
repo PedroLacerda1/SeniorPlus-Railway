@@ -1,31 +1,32 @@
 package org.example.seniorplus.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Idoso;
 import org.example.seniorplus.domain.Mensagem;
 import org.example.seniorplus.dto.MensagemRequest;
 import org.example.seniorplus.dto.MensagemResponse;
 import org.example.seniorplus.repository.IdosoRepository;
 import org.example.seniorplus.repository.MensagemRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class MensagemService {
     
-    @Autowired
-    private MensagemRepository mensagemRepository;
+    private final MensagemRepository mensagemRepository;
 
-    @Autowired
-    private IdosoRepository idosoRepository;
+    private final IdosoRepository idosoRepository;
 
+    @Transactional(readOnly = true)
     public List<MensagemResponse> getMensagensDoIdoso(String cpf, String id) {
         String cpfResolvido = resolverCpf(cpf, id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o CPF do idoso para buscar mensagens."));
@@ -33,15 +34,16 @@ public class MensagemService {
         return mensagemRepository.findByIdosoCpfOrderByDataHoraAsc(cpfResolvido)
             .stream()
             .map(this::toResponse)
-            .collect(Collectors.toList());
+            .toList();
     }
 
+    @Transactional
     public MensagemResponse salvarMensagem(MensagemRequest request) {
         Objects.requireNonNull(request, "Mensagem não pode ser nula");
         String cpf = resolverCpf(request.getIdosoCpf(), request.getIdosoId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "CPF do idoso é obrigatório para enviar mensagens."));
 
-        Idoso idoso = idosoRepository.findById(cpf)
+        Idoso idoso = idosoRepository.findById(Objects.requireNonNull(cpf))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Idoso não encontrado: " + cpf));
 
         Mensagem mensagem = new Mensagem();
@@ -50,7 +52,7 @@ public class MensagemService {
         mensagem.setDestinatario(request.getDestinatario());
         mensagem.setIdoso(idoso);
         mensagem.setLida(Boolean.TRUE.equals(request.getLida()));
-        mensagem.setDataHora(LocalDateTime.now());
+        mensagem.setDataHora(LocalDateTime.now(ZoneId.systemDefault()));
 
         Mensagem salvo = mensagemRepository.save(mensagem);
         return toResponse(salvo);
@@ -72,8 +74,7 @@ public class MensagemService {
         if (apenasDigitos.length() == 11) {
             return Optional.of(apenasDigitos);
         }
-        String trimmed = cpf.trim();
-        return trimmed.isEmpty() ? Optional.empty() : Optional.of(trimmed);
+        return Optional.empty();
     }
 
     private MensagemResponse toResponse(Mensagem mensagem) {
@@ -83,7 +84,7 @@ public class MensagemService {
             mensagem.getRemetente(),
             mensagem.getDestinatario(),
             mensagem.getIdoso() != null ? mensagem.getIdoso().getCpf() : null,
-            mensagem.getIdoso() != null ? mensagem.getIdoso().getCpf() : null,
+            null,
             mensagem.isLida(),
             mensagem.getDataHora()
         );

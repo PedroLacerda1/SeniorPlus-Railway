@@ -3,6 +3,7 @@ package org.example.seniorplus.domain;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 
@@ -235,7 +236,7 @@ public class Medicamento extends BaseEntity {
 
     public List<LocalTime> gerarHorariosNasProximas2Horas() {
         List<LocalTime> proximosHorarios = new java.util.ArrayList<>();
-        LocalTime agora = LocalTime.now().withSecond(0).withNano(0);
+        LocalTime agora = LocalTime.now(ZoneId.systemDefault()).withSecond(0).withNano(0);
         LocalTime fim = agora.plusHours(2);
 
         // Use uma variável local para garantir o tipo
@@ -243,6 +244,12 @@ public class Medicamento extends BaseEntity {
 
         for (LocalTime base : listaHorarios) {
             LocalTime horario = base;
+            if (intervaloMinutos <= 0) {
+                if (!horario.isBefore(agora) && horario.isBefore(fim)) {
+                    proximosHorarios.add(horario);
+                }
+                continue;
+            }
             while (horario.isBefore(fim)) {
                 if (!horario.isBefore(agora)) {
                     proximosHorarios.add(horario);

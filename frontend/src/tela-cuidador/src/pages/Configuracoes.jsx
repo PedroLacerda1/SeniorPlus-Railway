@@ -62,7 +62,17 @@ function Configuracoes() {
       email: caregiverProfile?.email || currentUser?.email || "",
       connectionMessage: caregiverProfile?.connectionMessage || "",
     })
-  }, [caregiverProfile, currentUser?.id])
+  }, [
+    caregiverProfile,
+    currentUser?.email,
+    currentUser?.fullName,
+    currentUser?.id,
+    currentUser?.name,
+    currentUser?.nome,
+    currentUser?.phone,
+    currentUser?.telefone,
+    currentUser?.username,
+  ])
 
   const [dataBackup, setDataBackup] = useState({
     lastBackup: "Nunca",

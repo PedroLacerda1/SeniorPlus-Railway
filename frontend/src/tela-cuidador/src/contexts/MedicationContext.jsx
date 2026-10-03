@@ -2,30 +2,40 @@ import { createContext, useState, useContext, useEffect, useCallback } from "rea
 import { v4 as uuidv4 } from "uuid"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { useToast } from "../../../contexts/ToastContext"
+import { useUser } from "./UserContext"
 
 const MedicationContext = createContext()
 
-const LEGACY_MEDICATION_KEY = "medications"
-const SHARED_MEDICATION_KEY = "seniorplus:medications"
-const LEGACY_HISTORY_KEY = "medicationHistory"
-const SHARED_HISTORY_KEY = "seniorplus:medicationHistory"
+const MEDICATION_STORAGE_PREFIX = "seniorplus:medications:"
+const HISTORY_STORAGE_PREFIX = "seniorplus:medication-history:"
+
+const normalizeCpf = (value) => {
+  const digits = String(value || "").replace(/\D/g, "")
+  return digits.length === 11 ? digits : null
+}
 
 export const useMedication = () => useContext(MedicationContext)
 
 export const MedicationProvider = ({ children }) => {
   const { currentUser } = useAuth()
+  const { elderlyData } = useUser()
   const { showSuccess, showError, showWarning } = useToast()
+  const residentCpf = normalizeCpf(elderlyData?.cpf || (currentUser?.role === "elderly" ? currentUser?.cpf : null))
+  const accountKey = currentUser?.id || currentUser?.email || currentUser?.username || null
+  const scopeKey = residentCpf || (accountKey ? `account:${accountKey}` : null)
+  const medicationStorageKey = scopeKey ? `${MEDICATION_STORAGE_PREFIX}${scopeKey}` : null
+  const historyStorageKey = scopeKey ? `${HISTORY_STORAGE_PREFIX}${scopeKey}` : null
 
-  const parseTimes = (timeValue) => {
+  const parseTimes = useCallback((timeValue) => {
     if (!timeValue) return []
     if (Array.isArray(timeValue)) return timeValue.filter(Boolean).map((t) => t.trim())
     return String(timeValue)
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean)
-  }
+  }, [])
 
-  const normalizeMedication = (medication) => {
+  const normalizeMedication = useCallback((medication) => {
     if (!medication) return null
     const base = {
       id: medication.id || uuidv4(),
@@ -49,7 +59,7 @@ export const MedicationProvider = ({ children }) => {
     }
 
     return base
-  }
+  }, [parseTimes])
 
   const parseStoredValue = useCallback((raw) => {
     if (!raw) return []
@@ -64,88 +74,75 @@ export const MedicationProvider = ({ children }) => {
     }
   }, [])
 
-  const loadInitialMedications = useCallback(() => {
-    if (typeof window === "undefined") return []
-    const shared = parseStoredValue(window.localStorage.getItem(SHARED_MEDICATION_KEY))
-    if (shared.length > 0) return shared.map((med) => normalizeMedication(med)).filter(Boolean)
+  const [medicationState, setMedicationState] = useState({ scopeKey: null, items: [] })
+  const [historyState, setHistoryState] = useState({ scopeKey: null, items: [] })
+  const medications = medicationState.scopeKey === scopeKey ? medicationState.items : []
+  const medicationHistory = historyState.scopeKey === scopeKey ? historyState.items : []
 
-    const legacy = parseStoredValue(window.localStorage.getItem(LEGACY_MEDICATION_KEY))
-    if (legacy.length > 0) return legacy.map((med) => normalizeMedication(med)).filter(Boolean)
+  const setScopedMedications = useCallback((update) => {
+    setMedicationState((previous) => {
+      const current = previous.scopeKey === scopeKey ? previous.items : []
+      const items = typeof update === "function" ? update(current) : update
+      return { scopeKey, items }
+    })
+  }, [scopeKey])
 
-    return []
-  }, [parseStoredValue])
+  const setScopedHistory = useCallback((update) => {
+    setHistoryState((previous) => {
+      const current = previous.scopeKey === scopeKey ? previous.items : []
+      const items = typeof update === "function" ? update(current) : update
+      return { scopeKey, items }
+    })
+  }, [scopeKey])
 
-  const loadInitialHistory = useCallback(() => {
-    if (typeof window === "undefined") return []
-    const shared = parseStoredValue(window.localStorage.getItem(SHARED_HISTORY_KEY))
-    if (shared.length > 0) return shared
-
-    const legacy = parseStoredValue(window.localStorage.getItem(LEGACY_HISTORY_KEY))
-    return legacy
-  }, [parseStoredValue])
-
-  const [medications, setMedications] = useState(() => loadInitialMedications())
-
-  const [medicationHistory, setMedicationHistory] = useState(() => loadInitialHistory())
-
-  // Limpar dados quando o usuário fizer logout
   useEffect(() => {
-    if (!currentUser) {
-      setMedications(loadInitialMedications())
-      setMedicationHistory(loadInitialHistory())
+    if (!scopeKey || typeof window === "undefined") {
+      setMedicationState({ scopeKey: null, items: [] })
+      setHistoryState({ scopeKey: null, items: [] })
+      return
     }
-  }, [currentUser, loadInitialHistory, loadInitialMedications])
+    const medications = parseStoredValue(window.localStorage.getItem(medicationStorageKey))
+      .map((medication) => normalizeMedication(medication))
+      .filter(Boolean)
+    const history = parseStoredValue(window.localStorage.getItem(historyStorageKey))
+    setMedicationState({ scopeKey, items: medications })
+    setHistoryState({ scopeKey, items: history })
+  }, [historyStorageKey, medicationStorageKey, normalizeMedication, parseStoredValue, scopeKey])
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined
 
     const handleStorage = (event) => {
-      if (event.key === SHARED_MEDICATION_KEY && event.newValue) {
-        setMedications(parseStoredValue(event.newValue).map((med) => normalizeMedication(med)).filter(Boolean))
+      if (event.key === medicationStorageKey && event.newValue) {
+        setScopedMedications(parseStoredValue(event.newValue).map((med) => normalizeMedication(med)).filter(Boolean))
       }
-      if (event.key === SHARED_HISTORY_KEY && event.newValue) {
-        setMedicationHistory(parseStoredValue(event.newValue))
+      if (event.key === historyStorageKey && event.newValue) {
+        setScopedHistory(parseStoredValue(event.newValue))
       }
     }
 
     window.addEventListener("storage", handleStorage)
     return () => window.removeEventListener("storage", handleStorage)
-  }, [parseStoredValue])
+  }, [historyStorageKey, medicationStorageKey, normalizeMedication, parseStoredValue, setScopedHistory, setScopedMedications])
 
   // Salvar dados no localStorage quando mudarem
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined" || !medicationStorageKey || medicationState.scopeKey !== scopeKey) return
     try {
-      window.localStorage.setItem(LEGACY_MEDICATION_KEY, JSON.stringify(medications))
+      window.localStorage.setItem(medicationStorageKey, JSON.stringify(medicationState.items))
     } catch (error) {
-      console.warn("Falha ao persistir medicamentos (legacy)", error)
+      console.warn("Falha ao persistir medicamentos do idoso atual", error)
     }
-    try {
-      window.localStorage.setItem(
-        SHARED_MEDICATION_KEY,
-        JSON.stringify({ items: medications, updatedAt: new Date().toISOString() }),
-      )
-    } catch (error) {
-      console.warn("Falha ao persistir medicamentos compartilhados", error)
-    }
-  }, [medications])
+  }, [medicationState, medicationStorageKey, scopeKey])
 
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined" || !historyStorageKey || historyState.scopeKey !== scopeKey) return
     try {
-      window.localStorage.setItem(LEGACY_HISTORY_KEY, JSON.stringify(medicationHistory))
+      window.localStorage.setItem(historyStorageKey, JSON.stringify(historyState.items))
     } catch (error) {
-      console.warn("Falha ao persistir histórico de medicamentos (legacy)", error)
+      console.warn("Falha ao persistir histórico do idoso atual", error)
     }
-    try {
-      window.localStorage.setItem(
-        SHARED_HISTORY_KEY,
-        JSON.stringify({ items: medicationHistory, updatedAt: new Date().toISOString() }),
-      )
-    } catch (error) {
-      console.warn("Falha ao persistir histórico compartilhado", error)
-    }
-  }, [medicationHistory])
+  }, [historyState, historyStorageKey, scopeKey])
 
   const addMedication = (name, dosage, frequency, time, startDate, endDate, instructions, notes = "") => {
     const newMedication = normalizeMedication({
@@ -163,14 +160,14 @@ export const MedicationProvider = ({ children }) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    setMedications([...medications, newMedication])
+    setScopedMedications((previous) => [...previous, newMedication])
     showSuccess(`Medicamento ${name} adicionado com sucesso!`)
     return newMedication
   }
 
   const updateMedication = (id, updatedMedication) => {
-    setMedications(
-      medications.map((medication) => {
+    setScopedMedications((previous) =>
+      previous.map((medication) => {
         if (medication.id === id) {
           return normalizeMedication({
             ...medication,
@@ -187,7 +184,7 @@ export const MedicationProvider = ({ children }) => {
 
   const deleteMedication = (id) => {
     const medicationToDelete = medications.find((med) => med.id === id)
-    setMedications(medications.filter((medication) => medication.id !== id))
+    setScopedMedications((previous) => previous.filter((medication) => medication.id !== id))
     if (medicationToDelete) {
       showSuccess(`Medicamento ${medicationToDelete.name} removido com sucesso!`)
     }
@@ -235,7 +232,7 @@ export const MedicationProvider = ({ children }) => {
       createdAt: now.toISOString(),
     }
 
-    setMedicationHistory((prev) => {
+    setScopedHistory((prev) => {
       if (!normalizedSlot) {
         return [...prev, newRecord]
       }
@@ -315,7 +312,7 @@ export const MedicationProvider = ({ children }) => {
         return []
       }
 
-      setMedications((prev) => [...prev, ...validMedications])
+      setScopedMedications((prev) => [...prev, ...validMedications])
       showSuccess(`${validMedications.length} medicamentos importados com sucesso!`)
       return validMedications
     } catch (error) {

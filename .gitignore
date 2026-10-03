@@ -9,6 +9,9 @@
 /frontend/build
 /frontend/dist
 
+# Local environment files and credentials
+**/.env
+
 # Dependências do Maven/Java (Back-end)
 /backend/target/
 *.log

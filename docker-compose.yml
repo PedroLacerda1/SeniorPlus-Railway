@@ -1,20 +1,44 @@
 version: "3.8"
 
 services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-seniorplus}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-seniorplus-local}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
   backend:
     build:
       context: ./backend
+    env_file:
+      - ./backend/src/main/resources/.env
     ports:
       - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://hopper.proxy.rlwy.net:20356/railway?allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: iFXLMRbcRMkyWlpIAOyObBylnYkQvvAw
       SERVER_PORT: 8080
+      APP_REMINDERS_RABBITMQ_ENABLED: ${APP_REMINDERS_RABBITMQ_ENABLED:-true}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-seniorplus}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-seniorplus-local}
       SPRING_FLYWAY_ENABLED: "true"
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
       SPRING_FLYWAY_IGNORE_FAILED_MIGRATIONS: "true"
-      JWT_SECRET: ${JWT_SECRET:-dev-change-me-please-!}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   frontend:
     build:
@@ -25,3 +49,6 @@ services:
       - "3000:80"
     depends_on:
       - backend
+
+volumes:
+  rabbitmq_data:

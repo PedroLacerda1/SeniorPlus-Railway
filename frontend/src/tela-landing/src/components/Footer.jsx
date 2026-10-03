@@ -6,16 +6,9 @@ import {
   Instagram,
   Facebook,
   X,
-  MessageCircle,
 } from "lucide-react";
 
 const Footer = () => {
-  const projectLinks = [
-    "Funcionalidades",
-    "Tecnologia",
-    "Metodologia",
-    "Documentação",
-  ];
   const contactLinks = [
     "Equipe de Desenvolvimento",
     "Documentação Técnica",
@@ -69,7 +62,7 @@ const Footer = () => {
             <ul className="footer-links">
               {contactLinks.map((item, index) => (
                 <li key={index}>
-                  <a href="#" className="footer-link">
+                  <a href="#contato" className="footer-link">
                     {item}
                   </a>
                 </li>
@@ -102,10 +95,10 @@ const Footer = () => {
             &copy; 2025 Senior+
           </p>
           <div className="footer-bottom-links">
-            <a href="#" className="footer-bottom-link">
+            <a href="#contato" className="footer-bottom-link">
               Privacidade
             </a>
-            <a href="#" className="footer-bottom-link">
+            <a href="#contato" className="footer-bottom-link">
               Termos
             </a>
           </div>

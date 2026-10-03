@@ -14,19 +14,22 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 @Service
 @Slf4j
 public class JwtService {
 
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret}")
     private String secretKey;
 
     @Value("${jwt.expiration-minutes:1440}")
@@ -36,13 +39,12 @@ public class JwtService {
 
     @PostConstruct
     public void init() {
-        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = Objects.requireNonNull(secretKey, "JWT_SECRET must be configured")
+                .getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
-            signingKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
-            log.warn("jwt.secret too short. Generated temporary key.");
-        } else {
-            signingKey = Keys.hmacShaKeyFor(keyBytes);
+            throw new IllegalStateException("JWT_SECRET must contain at least 32 bytes");
         }
+        signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public AuthenticationResponse generateToken(UserDetails userDetails) {
@@ -54,18 +56,18 @@ public class JwtService {
     }
 
     public AuthenticationResponse generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        LocalDateTime expirationDateTime = LocalDateTime.now().plusMinutes(jwtExpirationMinutes);
-        Date expirationDate = Date.from(expirationDateTime.atZone(ZoneId.systemDefault()).toInstant());
+        Instant issuedAt = Instant.now();
+        Instant expiration = issuedAt.plus(jwtExpirationMinutes, ChronoUnit.MINUTES);
 
         String token = Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date())
-                .setExpiration(expirationDate)
+            .setIssuedAt(Date.from(issuedAt))
+            .setExpiration(Date.from(expiration))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
 
-        return AuthenticationResponse.of(token, expirationDateTime);
+        return AuthenticationResponse.of(token, LocalDateTime.ofInstant(expiration, ZoneId.systemDefault()));
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
@@ -74,13 +76,15 @@ public class JwtService {
     }
 
     private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+        return extractExpiration(token).isBefore(Instant.now());
     }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    @SuppressWarnings("null")
+    private Instant extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration).toInstant();
     }
 
+    @SuppressWarnings("null")
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }

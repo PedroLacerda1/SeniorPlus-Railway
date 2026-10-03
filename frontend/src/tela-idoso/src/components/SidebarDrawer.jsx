@@ -26,7 +26,14 @@ const NAV_ITEMS = [
   { id: "configuracoes", label: "Configurações", icon: Settings2, route: "/tela-idoso/configuracoes" },
 ]
 
-export default function SidebarDrawer({ isOpen, toggleSidebar, residentName, residentAvatar, residentInitials }) {
+export default function SidebarDrawer({
+  isOpen,
+  toggleSidebar,
+  residentName,
+  residentAvatar,
+  residentInitials,
+  pendingRequestCount = 0,
+}) {
   const { logout, currentUser } = useAuth()
   const userContext = useUser()
   const elderlyData = userContext?.elderlyData
@@ -150,6 +157,11 @@ export default function SidebarDrawer({ isOpen, toggleSidebar, residentName, res
               >
                 <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                 <span>{label}</span>
+                {id === "solicitacoes" && pendingRequestCount > 0 && (
+                  <span className="sidebar-nav__badge" aria-label={`${pendingRequestCount} pendentes`}>
+                    {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+                  </span>
+                )}
               </button>
             ))}
           </nav>

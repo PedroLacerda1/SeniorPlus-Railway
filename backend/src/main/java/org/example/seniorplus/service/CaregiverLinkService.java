@@ -16,12 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 public class CaregiverLinkService {
@@ -86,7 +87,7 @@ public class CaregiverLinkService {
         return buscarSolicitacoesPorIdosoEStatus(idosoCpf, CaregiverLinkStatus.PENDING)
                 .stream()
                 .map(this::mapearDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -94,12 +95,13 @@ public class CaregiverLinkService {
         return buscarSolicitacoesParaCuidador(cuidadorCpf)
                 .stream()
                 .map(this::mapearDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional
     public CaregiverLinkRequest responderSolicitacao(Long id, String idosoCpf, boolean aceitar) {
-    CaregiverLinkRequest request = requestRepository.findById(id)
+        Long requestId = Objects.requireNonNull(id, "ID da solicitação não pode ser nulo");
+        CaregiverLinkRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new EmptyResultDataAccessException("Solicitação não encontrada", 1));
 
         if (!CaregiverLinkStatus.PENDING.equals(request.getStatus())) {
@@ -118,7 +120,7 @@ public class CaregiverLinkService {
             request.setStatus(CaregiverLinkStatus.REJECTED);
         }
 
-        request.setRespondedAt(LocalDateTime.now());
+        request.setRespondedAt(LocalDateTime.now(ZoneId.systemDefault()));
         return requestRepository.save(request);
     }
 
@@ -127,7 +129,7 @@ public class CaregiverLinkService {
         for (CaregiverLinkRequest solicitacao : pendentes) {
             if (!solicitacao.getId().equals(solicitacaoAceitaId)) {
                 solicitacao.setStatus(CaregiverLinkStatus.REJECTED);
-                solicitacao.setRespondedAt(LocalDateTime.now());
+                solicitacao.setRespondedAt(LocalDateTime.now(ZoneId.systemDefault()));
                 requestRepository.save(solicitacao);
             }
         }
@@ -144,12 +146,14 @@ public class CaregiverLinkService {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setRespondedAt(entity.getRespondedAt());
 
-        cuidadorRepository.findById(entity.getCuidadorCpf())
-                .map(Cuidador::getNome)
+        String cuidadorCpf = Objects.requireNonNull(entity.getCuidadorCpf(), "CPF do cuidador não pode ser nulo");
+        String idosoCpf = Objects.requireNonNull(entity.getIdosoCpf(), "CPF do idoso não pode ser nulo");
+        cuidadorRepository.findById(cuidadorCpf)
+            .map(cuidador -> Objects.requireNonNull(cuidador).getNome())
                 .ifPresent(dto::setCuidadorNome);
 
-        idosoRepository.findById(entity.getIdosoCpf())
-                .map(Idoso::getNome)
+        idosoRepository.findById(idosoCpf)
+            .map(idoso -> Objects.requireNonNull(idoso).getNome())
                 .ifPresent(dto::setIdosoNome);
 
         return dto;

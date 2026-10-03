@@ -1,18 +1,20 @@
 package org.example.seniorplus.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.ExameMedico;
 // no-op imports
 import org.example.seniorplus.repository.ExameMedicoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.example.seniorplus.service.exception.ServiceOperationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class ExameMedicoService {
 
-    @Autowired
-    private ExameMedicoRepository exameMedicoRepository;
+    private final ExameMedicoRepository exameMedicoRepository;
 
     // Método para listar todos os medicamentos
     public List<ExameMedico> listarTodos() {
@@ -22,15 +24,15 @@ public class ExameMedicoService {
     // Método para buscar um medicamento por CPF
     public ExameMedico buscarPorCpf(String cpf) {
     return exameMedicoRepository.findByCpf(cpf)
-        .orElseThrow(() -> new RuntimeException("Exame não encontrado com o CPF: " + cpf));
+        .orElseThrow(() -> new ServiceOperationException("Exame não encontrado com o CPF: " + cpf));
     }
 
     // Método para salvar um novo medicamento
     public ExameMedico salvar(ExameMedico exameMedico) {
         try {
-            return exameMedicoRepository.save(exameMedico);
+            return exameMedicoRepository.save(Objects.requireNonNull(exameMedico));
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao salvar o medicamento: " + e.getMessage());
+            throw new ServiceOperationException("Erro ao salvar o medicamento: " + e.getMessage(), e);
         }
     }
 
@@ -47,7 +49,7 @@ public class ExameMedicoService {
 
             return exameMedicoRepository.save(existente);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao atualizar o exame com CPF: " + cpf + ". " + e.getMessage());
+            throw new ServiceOperationException("Erro ao atualizar o exame com CPF: " + cpf + ". " + e.getMessage(), e);
         }
     }
 
@@ -57,7 +59,7 @@ public class ExameMedicoService {
         try {
             exameMedicoRepository.deleteByCpf(cpf);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao deletar o exame com CPF: " + cpf + ". " + e.getMessage());
+            throw new ServiceOperationException("Erro ao deletar o exame com CPF: " + cpf + ". " + e.getMessage(), e);
         }
     }
 

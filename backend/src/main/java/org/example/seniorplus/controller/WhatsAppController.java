@@ -1,9 +1,9 @@
 package org.example.seniorplus.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.config.ZapWhatsAppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,16 +16,15 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/whatsapp")
 @CrossOrigin(origins = "http://localhost:3000")
+@RequiredArgsConstructor
 public class WhatsAppController {
 
     private static final Logger logger = LoggerFactory.getLogger(WhatsAppController.class);
     private static final String API_URL = "https://api.callmebot.com/whatsapp.php";
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
-    @Autowired(required = false)
-    private ZapWhatsAppProperties zapWhatsAppProperties;
+    private final ZapWhatsAppProperties zapWhatsAppProperties;
 
     public static class SendRequest {
         public String phone;

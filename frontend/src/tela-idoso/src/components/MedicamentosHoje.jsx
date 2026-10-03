@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import '../styles/MedicamentosHoje.css';
 import { Pill } from 'lucide-react';
 import { useMedication } from '../../../tela-cuidador/src/contexts/MedicationContext';
@@ -8,6 +8,8 @@ const MedicamentosHoje = () => {
   const [medsTomados, setMedsTomados] = useState({});
 
   const hoje = getTodayMedications();
+  const hojeRef = useRef(hoje);
+  hojeRef.current = hoje;
   const medSignature = JSON.stringify(
     hoje.map((med) => ({ id: med.id, times: med.times, time: med.time })),
   );
@@ -37,7 +39,7 @@ const MedicamentosHoje = () => {
     setMedsTomados((prev) => {
       const atualizados = {};
 
-      hoje.forEach((med) => {
+      hojeRef.current.forEach((med) => {
         const times = Array.isArray(med.times)
           ? med.times
           : String(med.time || '')

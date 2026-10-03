@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import {
   collectIdentitySources,
-  collectStoredResidentEntries,
-  mergeIdentityRecords,
   normalizeIdentifierDigits,
   resolveResidentCpf,
   resolveResidentId,
@@ -32,33 +30,16 @@ const buildInitials = (name) => {
 }
 
 export const useResidentIdentity = ({ currentUser, fallbackProfile } = {}) => {
-  const [residentRecords, setResidentRecords] = useState(() => collectStoredResidentEntries())
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined
-    const refresh = () => {
-      const storedEntries = collectStoredResidentEntries()
-      setResidentRecords((prev) => mergeIdentityRecords(prev, storedEntries))
-    }
-    window.addEventListener('storage', refresh)
-    window.addEventListener('residentProfileUpdated', refresh)
-    return () => {
-      window.removeEventListener('storage', refresh)
-      window.removeEventListener('residentProfileUpdated', refresh)
-    }
-  }, [])
-
   const identitySources = useMemo(() => {
     const baseSources = [
-      ...(residentRecords || []),
       fallbackProfile,
       currentUser?.assistedPerson,
       currentUser?.elderlyProfile,
-      currentUser?.profile,
-      currentUser,
+      currentUser?.role === 'elderly' ? currentUser.profile : null,
+      currentUser?.role === 'elderly' ? currentUser : null,
     ]
     return collectIdentitySources(baseSources)
-  }, [residentRecords, fallbackProfile, currentUser])
+  }, [fallbackProfile, currentUser])
 
   const resolvedCpf = useMemo(() => resolveResidentCpf(identitySources), [identitySources])
   const resolvedId = useMemo(() => resolveResidentId(identitySources), [identitySources])
@@ -69,8 +50,8 @@ export const useResidentIdentity = ({ currentUser, fallbackProfile } = {}) => {
       fallbackProfile,
       currentUser?.assistedPerson,
       currentUser?.elderlyProfile,
-      currentUser?.profile,
-      currentUser,
+      currentUser?.role === 'elderly' ? currentUser.profile : null,
+      currentUser?.role === 'elderly' ? currentUser : null,
     ].filter(Boolean)
   }, [identitySources, fallbackProfile, currentUser])
 

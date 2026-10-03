@@ -9,8 +9,6 @@ export const ThemeProvider = ({ children }) => {
     // Verificar se há uma preferência salva no localStorage
     const savedTheme = localStorage.getItem("theme")
     // Verificar se o sistema do usuário prefere modo escuro
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-
     return savedTheme ? savedTheme === "dark" : false
   })
 

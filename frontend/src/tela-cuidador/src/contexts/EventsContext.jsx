@@ -2,17 +2,27 @@ import { createContext, useState, useContext, useEffect, useMemo, useCallback } 
 import { v4 as uuidv4 } from "uuid"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { useToast } from "../../../contexts/ToastContext"
+import { useUser } from "./UserContext"
 
 const EventsContext = createContext()
 
-const LEGACY_STORAGE_KEY = "events"
-const SHARED_STORAGE_KEY = "seniorplus:events"
+const STORAGE_PREFIX = "seniorplus:events:"
+
+const normalizeCpf = (value) => {
+  const digits = String(value || "").replace(/\D/g, "")
+  return digits.length === 11 ? digits : null
+}
 
 export const useEvents = () => useContext(EventsContext)
 
 export const EventsProvider = ({ children }) => {
   const { currentUser } = useAuth()
+  const { elderlyData } = useUser()
   const { showSuccess, showError, showInfo } = useToast()
+  const residentCpf = normalizeCpf(elderlyData?.cpf || (currentUser?.role === "elderly" ? currentUser?.cpf : null))
+  const accountKey = currentUser?.id || currentUser?.email || currentUser?.username || null
+  const scopeKey = residentCpf || (accountKey ? `account:${accountKey}` : null)
+  const scopedStorageKey = scopeKey ? `${STORAGE_PREFIX}${scopeKey}` : null
 
   const EVENT_STATUS = useMemo(
     () => ({
@@ -22,7 +32,7 @@ export const EventsProvider = ({ children }) => {
     [],
   )
 
-  const normalizeEvent = (event) => {
+  const normalizeEvent = useCallback((event) => {
     if (!event) return null
     const base = {
       id: event.id || uuidv4(),
@@ -43,57 +53,48 @@ export const EventsProvider = ({ children }) => {
     }
 
     return base
-  }
+  }, [EVENT_STATUS])
 
-  const loadInitialEvents = useCallback(() => {
-    if (typeof window === "undefined") return []
+  const [eventState, setEventState] = useState({ scopeKey: null, events: [] })
+  const events = eventState.scopeKey === scopeKey ? eventState.events : []
 
-    const parseStoredValue = (raw) => {
-      if (!raw) return []
-      try {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) return parsed
-        if (Array.isArray(parsed?.items)) return parsed.items
-        return []
-      } catch (error) {
-        console.error("Erro ao interpretar eventos armazenados:", error)
-        return []
-      }
+  const setScopedEvents = useCallback((update) => {
+    if (!scopeKey) {
+      setEventState({ scopeKey: null, events: [] })
+      return
     }
+    setEventState((previous) => {
+      const current = previous.scopeKey === scopeKey ? previous.events : []
+      const next = typeof update === "function" ? update(current) : update
+      return { scopeKey, events: next }
+    })
+  }, [scopeKey])
 
-    const sharedRaw = window.localStorage.getItem(SHARED_STORAGE_KEY)
-    const shared = parseStoredValue(sharedRaw)
-    if (shared.length > 0) {
-      return shared.map((evt) => normalizeEvent(evt)).filter(Boolean)
-    }
-
-    const legacyRaw = window.localStorage.getItem(LEGACY_STORAGE_KEY)
-    const legacy = parseStoredValue(legacyRaw)
-    if (legacy.length > 0) {
-      return legacy.map((evt) => normalizeEvent(evt)).filter(Boolean)
-    }
-
-    return []
-  }, [])
-
-  const [events, setEvents] = useState(() => loadInitialEvents())
-
-  // Limpar dados quando o usuário fizer logout
+  // Load only data explicitly scoped to the active resident/account.
   useEffect(() => {
-    if (!currentUser) {
-      setEvents(loadInitialEvents())
+    if (!scopedStorageKey || typeof window === "undefined") {
+      setEventState({ scopeKey: null, events: [] })
+      return
     }
-  }, [currentUser, loadInitialEvents])
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(scopedStorageKey) || "[]")
+      const loaded = Array.isArray(parsed) ? parsed.map(normalizeEvent).filter(Boolean) : []
+      setEventState({ scopeKey, events: loaded })
+    } catch (error) {
+      console.error("Erro ao interpretar eventos armazenados:", error)
+      setEventState({ scopeKey, events: [] })
+    }
+  }, [normalizeEvent, scopeKey, scopedStorageKey])
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined
 
     const handleStorage = (event) => {
-      if (event.key !== SHARED_STORAGE_KEY || !event.newValue) return
+      if (event.key !== scopedStorageKey || !event.newValue) return
       try {
         const parsed = JSON.parse(event.newValue)
-        const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : []
-        setEvents(list.map((evt) => normalizeEvent(evt)).filter(Boolean))
+        const list = Array.isArray(parsed) ? parsed : []
+        setScopedEvents(list.map((evt) => normalizeEvent(evt)).filter(Boolean))
       } catch (error) {
         console.error("Erro ao sincronizar eventos compartilhados:", error)
       }
@@ -101,26 +102,17 @@ export const EventsProvider = ({ children }) => {
 
     window.addEventListener("storage", handleStorage)
     return () => window.removeEventListener("storage", handleStorage)
-  }, [])
+  }, [normalizeEvent, scopedStorageKey, setScopedEvents])
 
   // Salvar dados no localStorage quando mudarem
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined" || !scopedStorageKey || eventState.scopeKey !== scopeKey) return
     try {
-      window.localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(events))
+      window.localStorage.setItem(scopedStorageKey, JSON.stringify(eventState.events))
     } catch (error) {
-      console.warn("Falha ao persistir eventos (legacy)", error)
+      console.warn("Falha ao persistir eventos do idoso atual", error)
     }
-
-    try {
-      window.localStorage.setItem(
-        SHARED_STORAGE_KEY,
-        JSON.stringify({ items: events, updatedAt: new Date().toISOString() }),
-      )
-    } catch (error) {
-      console.warn("Falha ao persistir eventos compartilhados", error)
-    }
-  }, [events])
+  }, [eventState, scopeKey, scopedStorageKey])
 
   const addEvent = (title, date, startTime, endTime, location, description, category) => {
     const newEvent = normalizeEvent({
@@ -137,14 +129,14 @@ export const EventsProvider = ({ children }) => {
       status: EVENT_STATUS.PENDING,
     })
 
-    setEvents([...events, newEvent])
+    setScopedEvents((previous) => [...previous, newEvent])
     showSuccess(`Evento "${title}" adicionado com sucesso!`)
     return newEvent
   }
 
   const updateEvent = (id, updatedEvent) => {
-    setEvents(
-      events.map((event) => {
+    setScopedEvents((previous) =>
+      previous.map((event) => {
         if (event.id === id) {
           return normalizeEvent({
             ...event,
@@ -161,14 +153,14 @@ export const EventsProvider = ({ children }) => {
 
   const deleteEvent = (id) => {
     const eventToDelete = events.find((event) => event.id === id)
-    setEvents(events.filter((event) => event.id !== id))
+    setScopedEvents((previous) => previous.filter((event) => event.id !== id))
     if (eventToDelete) {
       showSuccess(`Evento "${eventToDelete.title}" removido com sucesso!`)
     }
   }
 
   const toggleEventStatus = (id) => {
-    setEvents((prev) =>
+    setScopedEvents((prev) =>
       prev.map((event) => {
         if (event.id !== id) return event
         const nextStatus = event.status === EVENT_STATUS.DONE ? EVENT_STATUS.PENDING : EVENT_STATUS.DONE
@@ -246,7 +238,7 @@ export const EventsProvider = ({ children }) => {
         return []
       }
 
-      setEvents((prev) => [...prev, ...validEvents])
+      setScopedEvents((prev) => [...prev, ...validEvents])
       showSuccess(`${validEvents.length} eventos importados com sucesso!`)
       return validEvents
     } catch (error) {

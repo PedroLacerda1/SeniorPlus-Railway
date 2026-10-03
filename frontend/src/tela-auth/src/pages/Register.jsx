@@ -23,7 +23,7 @@ function Register() {
   const [fieldErrors, setFieldErrors] = useState({})
 
   const navigate = useNavigate()
-  const { register } = useAuth()
+  const { register, logout } = useAuth()
   const { showSuccess, showError } = useToast()
 
   const handleSubmit = async (e) => {
@@ -78,19 +78,13 @@ function Register() {
       }
 
       const user = await register(userData)
+      await logout()
       try {
         const displayName = user?.name || user?.nome || user?.email || "usuário"
-        showSuccess(`Conta criada com sucesso! Bem-vindo, ${displayName}.`)
+        showSuccess(`Conta criada com sucesso, ${displayName}. Faça login para continuar.`)
       } catch (_) {}
 
-      // Redirecionar com base na role
-      if (user.role === "ROLE_CUIDADOR") {
-        navigate("/tela-cuidador")
-      } else if (user.role === "ROLE_IDOSO") {
-        navigate("/tela-idoso")
-      } else {
-        navigate("/dashboard")
-      }
+      navigate("/login", { replace: true })
     } catch (error) {
       // Mapeia mensagens com base em status e detalhes padronizados
       let message = error.message || "Falha ao registrar. Tente novamente.";

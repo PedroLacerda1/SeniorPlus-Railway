@@ -119,16 +119,6 @@ const processPhotoFile = async (file) => {
   }
 }
 
-const persistResidentProfileCache = (record) => {
-  if (typeof window === "undefined" || !record) return
-  try {
-    window.localStorage.setItem("residentProfile", JSON.stringify(record))
-    window.dispatchEvent(new Event("residentProfileUpdated"))
-  } catch (error) {
-    console.warn("Não foi possível atualizar o cache local do perfil do idoso", error)
-  }
-}
-
 const calcularImc = (peso, alturaEmCm) => {
   const pesoNumero = parseFloat(peso)
   const alturaNumeroCm = parseFloat(alturaEmCm)
@@ -396,7 +386,7 @@ function AtualizarDados() {
         }
       }
     },
-    [showError],
+    [showError, updateElderlyData],
   )
 
   const carregarVinculos = useCallback(
@@ -513,7 +503,6 @@ function AtualizarDados() {
 
       if (savedRecord) {
         setFormData(mapApiToForm(savedRecord))
-        persistResidentProfileCache(savedRecord)
         updateElderlyData?.(mapApiToElderlyData(savedRecord))
       } else if (updateElderlyData) {
         updateElderlyData(

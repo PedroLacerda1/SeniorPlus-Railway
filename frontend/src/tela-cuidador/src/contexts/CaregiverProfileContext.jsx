@@ -3,7 +3,7 @@ import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 
 const CaregiverProfileContext = createContext()
 
-const STORAGE_KEY = "caregiverProfile"
+const STORAGE_PREFIX = "seniorplus:caregiver-profile:"
 
 const defaultProfile = {
   displayName: "",
@@ -31,38 +31,39 @@ const normalizeProfile = (raw = {}) => ({
 
 export const CaregiverProfileProvider = ({ children }) => {
   const { currentUser, updateCurrentUser } = useAuth()
-  const [caregiverProfile, setCaregiverProfile] = useState(() => {
-    try {
-      const cached = localStorage.getItem(STORAGE_KEY)
-      if (!cached) return normalizeProfile()
-      return normalizeProfile(JSON.parse(cached))
-    } catch (error) {
-      console.warn("Falha ao carregar perfil do cuidador do storage", error)
-      return normalizeProfile()
-    }
-  })
+  const accountIdentity = currentUser?.cpf || currentUser?.id || currentUser?.email || currentUser?.username || null
+  const storageKey = accountIdentity ? `${STORAGE_PREFIX}${accountIdentity}` : null
+  const [profileState, setProfileState] = useState({ storageKey: null, profile: normalizeProfile() })
+  const caregiverProfile = profileState.storageKey === storageKey
+    ? profileState.profile
+    : normalizeProfile()
 
   const persist = useCallback((value) => {
-    setCaregiverProfile((prev) => {
-      const next = normalizeProfile(typeof value === "function" ? value(prev) : value)
+    if (!storageKey || currentUser?.role !== "caregiver") return
+    setProfileState((previous) => {
+      const previousProfile = previous.storageKey === storageKey ? previous.profile : normalizeProfile()
+      const next = normalizeProfile(typeof value === "function" ? value(previousProfile) : value)
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+        localStorage.setItem(storageKey, JSON.stringify(next))
       } catch (error) {
         console.warn("Falha ao persistir perfil do cuidador", error)
       }
-      return next
+      return { storageKey, profile: next }
     })
-  }, [])
+  }, [currentUser?.role, storageKey])
 
   useEffect(() => {
-    if (!currentUser) {
-      persist(defaultProfile)
+    if (!storageKey || currentUser?.role !== "caregiver") {
+      setProfileState({ storageKey, profile: normalizeProfile() })
       return
     }
 
-    if (currentUser.role && currentUser.role !== "caregiver") {
-      // Preserve the persisted caregiver profile when a different role logs in (e.g., elderly view).
-      return
+    let profile = normalizeProfile()
+    try {
+      const cached = localStorage.getItem(storageKey)
+      if (cached) profile = normalizeProfile(JSON.parse(cached))
+    } catch (error) {
+      console.warn("Falha ao carregar perfil do cuidador do storage", error)
     }
 
     const name = currentUser.name || currentUser.nome || currentUser.fullName || currentUser.username || ""
@@ -70,17 +71,16 @@ export const CaregiverProfileProvider = ({ children }) => {
     const phoneFromUser = currentUser.telefone || currentUser.phone || ""
     const avatarFromUser = currentUser.photoUrl || currentUser.fotoUrl || ""
 
-    persist((prev) => {
-      const merged = normalizeProfile({
-        ...prev,
-        displayName: prev.displayName || name,
-        email: prev.email || emailFromUser,
-        phone: prev.phone || phoneFromUser,
-        photoUrl: prev.photoUrl || avatarFromUser,
-      })
-      return merged
+    profile = normalizeProfile({
+      ...profile,
+      displayName: profile.displayName || name,
+      email: profile.email || emailFromUser,
+      phone: profile.phone || phoneFromUser,
+      photoUrl: profile.photoUrl || avatarFromUser,
     })
-  }, [currentUser, persist])
+    setProfileState({ storageKey, profile })
+    localStorage.setItem(storageKey, JSON.stringify(profile))
+  }, [currentUser, storageKey])
 
   const updateCaregiverProfile = useCallback(
     (updates = {}) => {

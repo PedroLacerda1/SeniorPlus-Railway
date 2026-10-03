@@ -1,9 +1,10 @@
-import { createContext, useState, useContext, useEffect, useRef, useCallback } from "react"
+import { createContext, useState, useContext, useEffect, useRef, useCallback, useMemo } from "react"
 import { useMedication } from "../tela-cuidador/src/contexts/MedicationContext"
 import { useEvents } from "../tela-cuidador/src/contexts/EventsContext"
 import { emitEmergencyNotification } from "../utils/emergency"
 import { useToast } from "./ToastContext"
 import { useAuth } from "../tela-auth/src/contexts/AuthContext"
+import { useUser } from "../tela-cuidador/src/contexts/UserContext"
 
 const NotificationContext = createContext()
 
@@ -11,9 +12,27 @@ export const useNotification = () => useContext(NotificationContext)
 
 export const NotificationProvider = ({ children }) => {
   const { currentUser } = useAuth()
-  const storageKey = currentUser ? `notifications:${currentUser.id || currentUser.email || "default"}` : null
+  const { elderlyData } = useUser()
+  const residentCpf = String(
+    elderlyData?.cpf || (currentUser?.role === "elderly" ? currentUser?.cpf : "") || "",
+  ).replace(/\D/g, "")
+  const ownerKey = residentCpf.length === 11
+    ? `cpf:${residentCpf}`
+    : currentUser?.id || currentUser?.email || currentUser?.username || null
+  const storageKey = currentUser && ownerKey ? `notifications:${ownerKey}` : null
 
-  const [notifications, setNotifications] = useState([])
+  const [notificationState, setNotificationState] = useState({ storageKey: null, items: [] })
+  const notifications = useMemo(
+    () => notificationState.storageKey === storageKey ? notificationState.items : [],
+    [notificationState, storageKey],
+  )
+  const setNotifications = useCallback((update) => {
+    setNotificationState((previous) => {
+      const current = previous.storageKey === storageKey ? previous.items : []
+      const items = typeof update === "function" ? update(current) : update
+      return { storageKey, items }
+    })
+  }, [storageKey])
 
   const [unreadCount, setUnreadCount] = useState(0)
   const [permission, setPermission] = useState("default")
@@ -22,41 +41,35 @@ export const NotificationProvider = ({ children }) => {
   const notificationLockRef = useRef(new Set())
   const audioContextRef = useRef(null)
   const lastSoundRef = useRef(0)
+  const reminderChecksRef = useRef({})
 
   // Salvar notificações no localStorage
   useEffect(() => {
+    notificationLockRef.current.clear()
     if (!currentUser) {
-      notificationLockRef.current.clear()
-      setNotifications([])
+      setNotificationState({ storageKey: null, items: [] })
       setUnreadCount(0)
-      localStorage.removeItem("notifications")
-      Object.keys(localStorage)
-        .filter((key) => key.startsWith("notifications:"))
-        .forEach((key) => localStorage.removeItem(key))
       return
     }
 
-    const raw = storageKey ? localStorage.getItem(storageKey) || localStorage.getItem("notifications") : null
+    const raw = storageKey ? localStorage.getItem(storageKey) : null
     if (!raw) {
-      setNotifications([])
+      setNotificationState({ storageKey, items: [] })
       return
     }
 
     try {
       const parsed = JSON.parse(raw)
-      setNotifications(Array.isArray(parsed) ? parsed : [])
+      setNotificationState({ storageKey, items: Array.isArray(parsed) ? parsed : [] })
     } catch (_) {
-      setNotifications([])
+      setNotificationState({ storageKey, items: [] })
     }
   }, [currentUser, storageKey])
 
   useEffect(() => {
-    if (!currentUser || !storageKey) return
-    localStorage.setItem(storageKey, JSON.stringify(notifications))
-    if (storageKey !== "notifications") {
-      localStorage.removeItem("notifications")
-    }
-  }, [notifications, currentUser, storageKey])
+    if (!currentUser || !storageKey || notificationState.storageKey !== storageKey) return
+    localStorage.setItem(storageKey, JSON.stringify(notificationState.items))
+  }, [currentUser, notificationState, storageKey])
 
   useEffect(() => {
     const count = notifications.filter((notification) => !notification.read).length
@@ -117,13 +130,13 @@ export const NotificationProvider = ({ children }) => {
 
   // Verificar medicamentos e eventos para criar notificações
   useEffect(() => {
-    checkMedicationReminders()
-    checkEventReminders()
+    reminderChecksRef.current.checkMedicationReminders?.()
+    reminderChecksRef.current.checkEventReminders?.()
 
     // Configurar verificação periódica
     const interval = setInterval(() => {
-      checkMedicationReminders()
-      checkEventReminders()
+      reminderChecksRef.current.checkMedicationReminders?.()
+      reminderChecksRef.current.checkEventReminders?.()
     }, 60000) // Verificar a cada minuto
 
     return () => clearInterval(interval)
@@ -341,7 +354,7 @@ export const NotificationProvider = ({ children }) => {
   // Adicionar notificação
   const addNotification = useCallback((notification) => {
     setNotifications((prev) => [notification, ...prev])
-  }, [])
+  }, [setNotifications])
 
   // Registrar ações de emergência com helper centralizado
   const notifyEmergencyAction = useCallback(
@@ -392,6 +405,8 @@ export const NotificationProvider = ({ children }) => {
 
     return notification.id
   }
+
+  reminderChecksRef.current = { checkMedicationReminders, checkEventReminders }
 
   return (
     <NotificationContext.Provider

@@ -32,16 +32,6 @@ function ProfileCard() {
       const nomeBase = currentUser?.name || currentUser?.nome || currentUser?.fullName || currentUser?.username;
       const emailBase = currentUser?.email || fonte.email;
 
-      let storedCaregiverProfile = null;
-      if (typeof window !== "undefined") {
-        try {
-          const raw = window.localStorage.getItem("caregiverProfile");
-          if (raw) storedCaregiverProfile = JSON.parse(raw);
-        } catch (error) {
-          storedCaregiverProfile = null;
-        }
-      }
-
       const listaCuidadores = [];
       const fontesPossiveis = [];
 
@@ -60,10 +50,10 @@ function ProfileCard() {
           listaCuidadores.push({
             nome: c.nome || "Cuidador vinculado",
             cpf: cpfCuidador,
-            email: c.email || storedCaregiverProfile?.email || null,
-            telefone: c.telefone || storedCaregiverProfile?.phone || null,
-            fotoUrl: c.fotoUrl || c.foto || c.avatarUrl || storedCaregiverProfile?.photoUrl || null,
-            headline: c.headline || storedCaregiverProfile?.headline || null,
+            email: c.email || null,
+            telefone: c.telefone || null,
+            fotoUrl: c.fotoUrl || c.foto || c.avatarUrl || null,
+            headline: c.headline || null,
           });
         });
 
@@ -73,17 +63,6 @@ function ProfileCard() {
         }
         return index === self.findIndex((other) => other.cpf === item.cpf);
       });
-
-      if (deduplicados.length === 0 && storedCaregiverProfile?.displayName) {
-        deduplicados.push({
-          nome: storedCaregiverProfile.displayName,
-          cpf: storedCaregiverProfile.cpf || null,
-          email: storedCaregiverProfile.email || null,
-          telefone: storedCaregiverProfile.phone || null,
-          fotoUrl: storedCaregiverProfile.photoUrl || null,
-          headline: storedCaregiverProfile.headline || null,
-        });
-      }
 
       const idadeBase =
         fonte.idade ??
@@ -143,7 +122,7 @@ function ProfileCard() {
       return;
     }
     loadProfile({ silent: true });
-  }, [currentUser?.cpf, loadProfile, normalizarPerfil]);
+  }, [currentUser, loadProfile, normalizarPerfil]);
 
   const avatarInitials = useMemo(() => {
     const fonte = profile?.nome?.trim();

@@ -107,7 +107,7 @@ function ProfileCard() {
     }
 
     fetchElderlyData();
-  }, []);
+  }, [updateElderlyData]);
 
   if (loading) {
     return (

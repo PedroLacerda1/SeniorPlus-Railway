@@ -39,17 +39,7 @@ public class Consulta extends BaseEntity {
     private String imgReceita;
 
     public Consulta() {
-    }
-
-    public Consulta(String cpf, String nomeMedico, String especialidade, LocalDate data, LocalTime hora, String local, String observacoes, String imgReceita) {
-        this.cpf = cpf;
-        this.nomeMedico = nomeMedico;
-        this.especialidade = especialidade;
-        this.data = data;
-        this.hora = hora;
-        this.local = local;
-        this.observacoes = observacoes;
-        this.imgReceita = imgReceita;
+        // Required by JPA for entity materialization.
     }
 
     public String getId() {

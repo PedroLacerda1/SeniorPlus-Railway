@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Data
@@ -38,12 +39,12 @@ public class ResetSenhaToken extends BaseEntity {
         ResetSenhaToken resetToken = new ResetSenhaToken();
         resetToken.setToken(UUID.randomUUID().toString());
         resetToken.setUsuario(usuario);
-        resetToken.setDataExpiracao(LocalDateTime.now().plusHours(24));
+        resetToken.setDataExpiracao(LocalDateTime.now(ZoneId.systemDefault()).plusHours(24));
         resetToken.setUtilizado(false);
         return resetToken;
     }
 
     public boolean isExpirado() {
-        return LocalDateTime.now().isAfter(dataExpiracao);
+        return LocalDateTime.now(ZoneId.systemDefault()).isAfter(dataExpiracao);
     }
 } 

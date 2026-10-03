@@ -101,43 +101,6 @@ CREATE TABLE reset_senha_tokens (
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 
-CREATE TABLE dietas (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    cpf VARCHAR(14) NOT NULL,
-    nome VARCHAR(255) NOT NULL,
-    descricao TEXT,
-    data_inicio DATE NOT NULL,
-    data_fim DATE,
-    restricoes_alimentares TEXT,
-    recomendacoes TEXT,
-    quantidade_refeicoes INT,
-    intervalo_entre_refeicoes VARCHAR(255),
-    refeicao1 TEXT,
-    refeicao2 TEXT,
-    refeicao3 TEXT,
-    refeicao4 TEXT,
-    refeicao5 TEXT,
-    refeicao6 TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    FOREIGN KEY (cpf) REFERENCES idosos(cpf)
-);
-
-CREATE TABLE exercicios (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    cpf VARCHAR(14) NOT NULL,
-    tipo VARCHAR(255) NOT NULL,
-    descricao TEXT,
-    data DATE NOT NULL,
-    duracao_minutos INT NOT NULL,
-    intensidade VARCHAR(50) NOT NULL,
-    observacoes TEXT,
-    link_video TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    FOREIGN KEY (cpf) REFERENCES idosos(cpf)
-);
-
 CREATE TABLE exames_medicos (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     cpf VARCHAR(14) NOT NULL,

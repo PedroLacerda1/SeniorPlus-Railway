@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Siren, PhoneCall, MessageCircle, Plus, Users, X, Loader2, RefreshCw } from 'lucide-react'
+import { Siren, PhoneCall, Plus, Users, X, Loader2, RefreshCw } from 'lucide-react'
 import { FaPhoneAlt, FaTrashAlt, FaWhatsapp } from 'react-icons/fa'
 import { api } from '../../../tela-auth/src/services/api'
 import { useAuth } from '../../../tela-auth/src/contexts/AuthContext'

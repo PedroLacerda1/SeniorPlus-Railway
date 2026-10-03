@@ -51,7 +51,6 @@ const EventosDoDia = () => {
               className={`evento-card1 ${evento.status === 'Concluído' ? 'concluido' : 'pendente'}`}
               role="listitem"
               tabIndex={0}
-              aria-pressed={evento.status === 'Concluído'}
               aria-label={`Evento às ${evento.hora}: ${evento.descricao}. Status ${evento.status}. Pressione Enter para alternar.`}
               onClick={() => alternarStatus(evento)}
               onKeyDown={(e) => {

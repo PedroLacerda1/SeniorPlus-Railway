@@ -2,39 +2,47 @@ package org.example.seniorplus.controller;
 
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Medicamento;
 import org.example.seniorplus.dto.MedicamentoRequest;
+import org.example.seniorplus.service.ElderlyAccessService;
 import org.example.seniorplus.service.MedicamentoService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
+
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class MedicamentoController {
 
-    @Autowired
-    private MedicamentoService service;
+    private final MedicamentoService service;
+    private final ElderlyAccessService accessService;
 
     @GetMapping("/idosos/{cpf}/medicamentos")
-    public ResponseEntity<List<Medicamento>> listar(@PathVariable String cpf) {
-        return ResponseEntity.ok(service.listarPorCpf(cpf));
+    public ResponseEntity<List<Medicamento>> listar(@PathVariable String cpf, Principal principal) {
+        String authorizedCpf = accessService.requireResidentAccess(cpf, principal);
+        return ResponseEntity.ok(service.listarPorCpf(authorizedCpf));
     }
 
     @PostMapping("/idosos/{cpf}/medicamentos")
-    public ResponseEntity<Medicamento> criar(@PathVariable String cpf, @RequestBody MedicamentoRequest request) {
-        Medicamento salvo = service.salvar(cpf, toMedicamento(request));
+    public ResponseEntity<Medicamento> criar(@PathVariable String cpf, @RequestBody MedicamentoRequest request, Principal principal) {
+        String authorizedCpf = accessService.requireResidentAccess(cpf, principal);
+        Medicamento salvo = service.salvar(authorizedCpf, toMedicamento(request));
         return ResponseEntity.status(201).body(salvo);
     }
 
     @PutMapping("/medicamentos/{id}")
-    public ResponseEntity<Medicamento> atualizar(@PathVariable Long id, @RequestBody MedicamentoRequest request) {
+    public ResponseEntity<Medicamento> atualizar(@PathVariable Long id, @RequestBody MedicamentoRequest request, Principal principal) {
+        accessService.requireMedicationAccess(id, principal);
         Medicamento atualizado = service.atualizar(id, toMedicamento(request));
         return ResponseEntity.ok(atualizado);
     }
 
     @DeleteMapping("/medicamentos/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<Void> deletar(@PathVariable Long id, Principal principal) {
+        accessService.requireMedicationAccess(id, principal);
         service.deletar(id);
         return ResponseEntity.noContent().build();
     }

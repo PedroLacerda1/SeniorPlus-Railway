@@ -5,59 +5,62 @@ import { useUser } from "../tela-cuidador/src/contexts/UserContext"
 import { useAuth } from "../tela-auth/src/contexts/AuthContext"
 import { useTheme } from "../contexts/ThemeContext" 
 import { useChat } from "../contexts/ChatContext"
+import { useToast } from "../contexts/ToastContext"
 import { api } from "../tela-auth/src/services/api"
 import {
     normalizeIdentifierDigits,
-    collectStoredResidentEntries,
     collectIdentitySources,
     resolveResidentCpf,
     resolveResidentId,
-    mergeIdentityRecords,
 } from "../utils/chatIdentity"
 import "../styles/ChatModal.css"
 
 const CHAT_TIMEZONE = "America/Sao_Paulo"
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
+const normalizeActor = (value) => (value || "").toString().trim().toLowerCase()
+const normalizeIdentifier = (value) => normalizeIdentifierDigits(value)
+const formatCpf = (value) => {
+    const digits = normalizeIdentifier(value)
+    if (!digits) return null
+    if (digits.length === 11) {
+        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+    }
+    return digits
+}
 
 function ChatModal() {
     const [messages, setMessages] = useState([])
     const [newMessage, setNewMessage] = useState("")
     const [isTyping] = useState(false)
-    const messagesEndRef = useRef(null)
+    const messagesContainerRef = useRef(null)
+    const shouldFollowMessagesRef = useRef(true)
     const isFetchingMessagesRef = useRef(false)
     const { elderlyData, isCareGiver } = useUser()
     const { currentUser } = useAuth()
-    const { darkMode } = useTheme() 
+    const { darkMode } = useTheme()
     const { isOpen, closeChat } = useChat()
-
+    const { showError } = useToast()
     const [loadingMessages, setLoadingMessages] = useState(false)
-    const [residentRecords, setResidentRecords] = useState(() => collectStoredResidentEntries())
-    const [selectedResidentKey, setSelectedResidentKey] = useState(() => {
-        if (typeof window === "undefined") return ""
-        return window.localStorage?.getItem?.("caregiverChatResidentKey") || ""
-    })
+    const [residentRecords, setResidentRecords] = useState([])
+    const [selectedResidentKey, setSelectedResidentKey] = useState("")
 
     const timeFormatter = useMemo(
         () => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: CHAT_TIMEZONE }),
         [],
     )
     const readableDateFormatter = useMemo(
-        () =>
-            new Intl.DateTimeFormat("pt-BR", {
-                weekday: "long",
-                day: "2-digit",
-                month: "long",
-                timeZone: CHAT_TIMEZONE,
-            }),
+        () => new Intl.DateTimeFormat("pt-BR", {
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+            timeZone: CHAT_TIMEZONE,
+        }),
         [],
     )
     const dateKeyFormatter = useMemo(
         () => new Intl.DateTimeFormat("en-CA", { timeZone: CHAT_TIMEZONE }),
         [],
     )
-
-    const normalizeActor = (value) => (value || "").toString().trim().toLowerCase()
-    const normalizeIdentifier = (value) => normalizeIdentifierDigits(value)
 
     const sanitizeMessage = useCallback((rawValue) => {
         if (!rawValue) return ""
@@ -72,75 +75,61 @@ function ChatModal() {
         const keys = ["nome", "name", "displayName", "apelido", "firstName", "fullName"]
         for (const key of keys) {
             const value = source[key]
-            if (typeof value === "string" && value.trim()) {
-                return value.trim()
-            }
+            if (typeof value === "string" && value.trim()) return value.trim()
         }
         return null
-    }
-
-    const formatCpf = (value) => {
-        const digits = normalizeIdentifier(value)
-        if (!digits) return null
-        if (digits.length === 11) {
-            return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
-        }
-        return digits
     }
 
     const buildOptionLabel = (option) => {
         if (!option) return ""
         if (!option.cpf) return option.name
         const formatted = formatCpf(option.cpf)
-        if (!formatted || formatted === option.name) return option.name
-        return `${option.name} (${formatted})`
+        return !formatted || formatted === option.name ? option.name : `${option.name} (${formatted})`
     }
 
-    const isCurrentUser = (value) => {
+    const isCurrentUser = useCallback((value) => {
         if (!value) return false
         const normalized = normalizeActor(value)
         return [currentUser?.name, currentUser?.email, currentUser?.username]
             .filter(Boolean)
             .some((candidate) => normalizeActor(candidate) === normalized)
-    }
+    }, [currentUser?.email, currentUser?.name, currentUser?.username])
 
-    const isCurrentElderly = (value) => {
+    const isCurrentElderly = useCallback((value) => {
         if (!value) return false
         const normalized = normalizeActor(value)
         return [elderlyData?.name, elderlyData?.email, elderlyData?.displayName]
             .filter(Boolean)
             .some((candidate) => normalizeActor(candidate) === normalized)
-    }
+    }, [elderlyData?.displayName, elderlyData?.email, elderlyData?.name])
 
     useEffect(() => {
-        const refreshFromStorage = () => {
-            const entries = collectStoredResidentEntries()
-            setResidentRecords((prev) => mergeIdentityRecords(prev, entries))
-        }
-
-        refreshFromStorage()
-
-        if (typeof window !== "undefined") {
-            window.addEventListener("storage", refreshFromStorage)
-            window.addEventListener("residentProfileUpdated", refreshFromStorage)
-        }
-
-        return () => {
-            if (typeof window !== "undefined") {
-                window.removeEventListener("storage", refreshFromStorage)
-                window.removeEventListener("residentProfileUpdated", refreshFromStorage)
-            }
-        }
-    }, [])
+        shouldFollowMessagesRef.current = true
+        setSelectedResidentKey("")
+        setMessages([])
+        setResidentRecords([])
+    }, [currentUser?.cpf, currentUser?.email, currentUser?.id])
 
     useEffect(() => {
-        if (!elderlyData) return
-        setResidentRecords((prev) => mergeIdentityRecords(prev, [elderlyData]))
-    }, [elderlyData])
+        if (!isOpen || !isCareGiver() || !currentUser?.cpf) return undefined
+        let cancelled = false
+        api.get(`/api/v1/idoso/cuidador/${encodeURIComponent(currentUser.cpf)}`)
+            .then((response) => {
+                if (!cancelled) setResidentRecords(Array.isArray(response) ? response : [])
+            })
+            .catch((error) => {
+                if (!cancelled) {
+                    setResidentRecords(elderlyData?.cpf ? [elderlyData] : [])
+                    console.error("Erro ao carregar idosos vinculados para o chat:", error)
+                }
+            })
+        return () => { cancelled = true }
+    }, [currentUser?.cpf, elderlyData, isCareGiver, isOpen])
 
     const identitySources = useMemo(() => {
         const base = [
             elderlyData,
+            currentUser?.role === "elderly" ? currentUser : null,
             currentUser?.assistedPerson,
             currentUser?.elderlyProfile,
             ...(residentRecords || []),
@@ -212,15 +201,6 @@ function ChatModal() {
         setSelectedResidentKey(residentOptions[0]?.key || "")
     }, [residentOptions, selectedResidentKey])
 
-    useEffect(() => {
-        if (typeof window === "undefined") return
-        if (selectedResidentKey) {
-            window.localStorage.setItem("caregiverChatResidentKey", selectedResidentKey)
-        } else {
-            window.localStorage.removeItem("caregiverChatResidentKey")
-        }
-    }, [selectedResidentKey])
-
     const selectedResident = useMemo(
         () => residentOptions.find((opt) => opt.key === selectedResidentKey) || null,
         [residentOptions, selectedResidentKey],
@@ -236,33 +216,6 @@ function ChatModal() {
 
     const hasActiveTarget = Boolean(resolvedCpf || resolvedId)
 
-    useEffect(() => {
-        if (!isOpen) return
-        if (residentOptions.length > 0) return
-        let cancelled = false
-        const fetchDefaultResident = async () => {
-            try {
-                const response = await api.get("/api/v1/idoso/informacoesIdoso")
-                if (!response || cancelled) return
-                setResidentRecords((prev) => mergeIdentityRecords(prev, [response]))
-                if (typeof window !== "undefined") {
-                    try {
-                        window.localStorage.setItem("residentProfile", JSON.stringify(response))
-                        window.dispatchEvent(new Event("residentProfileUpdated"))
-                    } catch (storageError) {
-                        console.warn("Não foi possível armazenar o residente padrão", storageError)
-                    }
-                }
-            } catch (error) {
-                console.error("Erro ao buscar idoso vinculado para o chat:", error)
-            }
-        }
-        fetchDefaultResident()
-        return () => {
-            cancelled = true
-        }
-    }, [isOpen, residentOptions.length])
-
     const handleResidentSelection = useCallback((event) => {
         setSelectedResidentKey(event.target.value)
     }, [])
@@ -270,7 +223,6 @@ function ChatModal() {
     const resolveSenderRole = useCallback(
         (rawSender, rawRecipient) => {
             const normalizedSender = normalizeActor(rawSender)
-            const normalizedRecipient = normalizeActor(rawRecipient)
 
             if (["caregiver", "cuidador", "cuidadora"].includes(normalizedSender)) {
                 return "caregiver"
@@ -420,6 +372,7 @@ function ChatModal() {
                 console.error('Erro ao carregar mensagens:', error)
                 if (!silent) {
                     setMessages([])
+                    showError(error?.message || 'Não foi possível carregar as mensagens.')
                 }
             } finally {
                 if (!silent) {
@@ -428,7 +381,7 @@ function ChatModal() {
                 isFetchingMessagesRef.current = false
             }
         },
-        [isOpen, hasActiveTarget, resolvedCpf, resolvedId, activeIdentifier, resolveSenderRole],
+        [isOpen, hasActiveTarget, resolvedCpf, resolvedId, activeIdentifier, resolveSenderRole, showError],
     )
 
     useEffect(() => {
@@ -496,11 +449,19 @@ function ChatModal() {
     }, [resolvedCpf, resolvedId, caregiverCpf, caregiverId, elderlyData, currentUser])
 
     useEffect(() => {
-        scrollToBottom()
+        if (shouldFollowMessagesRef.current) {
+            scrollToBottom()
+        }
     }, [messages])
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        const container = messagesContainerRef.current
+        container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+    }
+
+    const handleMessagesScroll = (event) => {
+        const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
+        shouldFollowMessagesRef.current = scrollHeight - scrollTop - clientHeight < 120
     }
 
     const handleSendMessage = (e) => {
@@ -510,6 +471,7 @@ function ChatModal() {
         if (!sanitizedContent || !hasActiveTarget) {
             return
         }
+        shouldFollowMessagesRef.current = true
 
         const caregiverCpfDigits = caregiverCpf
         const fallbackCaregiverId = caregiverId
@@ -578,7 +540,8 @@ function ChatModal() {
                 }
             } catch (error) {
                 console.error('Erro ao enviar mensagem:', error)
-                // opcional: marcar como falha ou mostrar toast
+                setMessages((prev) => prev.filter((message) => message.id !== optimistic.id))
+                showError(error?.message || 'Não foi possível enviar a mensagem. Tente novamente.')
             }
         })()
     }
@@ -678,7 +641,7 @@ function ChatModal() {
                 )}
 
                 {/* Mensagens */}
-                <div className="chat-messages">
+                <div className="chat-messages" ref={messagesContainerRef} onScroll={handleMessagesScroll}>
                     {loadingMessages && (
                         <div className="chat-loading">Carregando mensagens...</div>
                     )}
@@ -722,7 +685,6 @@ function ChatModal() {
                             </div>
                         </div>
                     )}
-                    <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input */}

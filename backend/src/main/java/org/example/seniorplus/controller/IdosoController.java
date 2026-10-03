@@ -1,5 +1,6 @@
 package org.example.seniorplus.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Cuidador;
 import org.example.seniorplus.domain.Idoso;
 import org.example.seniorplus.domain.Role;
@@ -7,10 +8,10 @@ import org.example.seniorplus.domain.Usuario;
 import org.example.seniorplus.dto.CaregiverLinkRequest;
 import org.example.seniorplus.dto.IdosoRequest;
 import org.example.seniorplus.repository.UsuarioRepository;
+import org.example.seniorplus.service.ElderlyAccessService;
 import org.example.seniorplus.service.IdosoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 
 import java.security.Principal;
@@ -22,28 +23,30 @@ import java.time.format.DateTimeParseException;
 
 @RestController
 @RequestMapping("/api/v1/idoso")
+@RequiredArgsConstructor
 public class IdosoController {
 
-    @Autowired
-    private IdosoService idosoService;
+    private final IdosoService idosoService;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
 
-   @GetMapping
-    public ResponseEntity<List<Idoso>> findAll() {
-       List<Idoso> idosos = idosoService.buscarTodos();
+    private final ElderlyAccessService accessService;
+
+    @GetMapping
+    public ResponseEntity<List<Idoso>> findAll(Principal principal) {
+       List<Idoso> idosos = accessService.listAccessibleResidents(principal);
        return ResponseEntity.ok().body(idosos);
    }
 
     @GetMapping(value = "/{cpf}")
-    public ResponseEntity<Idoso> findById(@PathVariable String cpf) {
-        Idoso find = idosoService.buscarPorCpf(cpf);
+    public ResponseEntity<Idoso> findById(@PathVariable String cpf, Principal principal) {
+        Idoso find = idosoService.buscarPorCpf(accessService.requireResidentAccess(cpf, principal));
         return find != null ? ResponseEntity.ok(find) : ResponseEntity.notFound().build();
     }
 
     @GetMapping("/cuidador/{cpf}")
-    public ResponseEntity<List<Idoso>> findByCaregiver(@PathVariable String cpf) {
+    public ResponseEntity<List<Idoso>> findByCaregiver(@PathVariable String cpf, Principal principal) {
+        accessService.requireCaregiverAccess(cpf, principal);
         List<Idoso> vinculados = idosoService.buscarPorCuidadorCpf(cpf);
         return ResponseEntity.ok(vinculados);
     }
@@ -79,37 +82,44 @@ public class IdosoController {
     }
 
     @PostMapping
-    public ResponseEntity<Idoso> save(@RequestBody IdosoRequest request) {
+    public ResponseEntity<Idoso> save(@RequestBody IdosoRequest request, Principal principal) {
+        accessService.requireResidentCreation(request.getCpf(), request.getCuidadorCpf(), principal);
+        accessService.requireCaregiverAssignment(request.getCuidadorCpf(), principal);
         Idoso entity = mapToEntity(request);
         Idoso saved = idosoService.criar(entity);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping(value = "/{cpf}")
-    public ResponseEntity<Idoso> update(@PathVariable String cpf, @RequestBody IdosoRequest request) {
+    public ResponseEntity<Idoso> update(@PathVariable String cpf, @RequestBody IdosoRequest request, Principal principal) {
+        accessService.requireResidentAccess(cpf, principal);
+        accessService.requireCaregiverAssignment(request.getCuidadorCpf(), principal);
         Idoso entity = mapToEntity(request);
         Idoso updated = idosoService.atualizar(cpf, entity);
         return ResponseEntity.ok(updated);
     }
 
     @PutMapping(value = "/{cpf}/cuidador")
-    public ResponseEntity<Idoso> linkCaregiver(@PathVariable String cpf, @RequestBody CaregiverLinkRequest request) {
+    public ResponseEntity<Idoso> linkCaregiver(@PathVariable String cpf, @RequestBody CaregiverLinkRequest request, Principal principal) {
+        accessService.requireResidentAccess(cpf, principal);
         if (request.getCuidadorCpf() == null || request.getCuidadorCpf().isBlank()) {
             return ResponseEntity.badRequest().build();
         }
+        accessService.requireCaregiverAssignment(request.getCuidadorCpf(), principal);
         Idoso updated = idosoService.atribuirCuidador(cpf, request.getCuidadorCpf());
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping(value = "/{cpf}/cuidador")
-    public ResponseEntity<Idoso> unlinkCaregiver(@PathVariable String cpf) {
+    public ResponseEntity<Idoso> unlinkCaregiver(@PathVariable String cpf, Principal principal) {
+        accessService.requireResidentAccess(cpf, principal);
         Idoso updated = idosoService.removerCuidador(cpf);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping(value = "/{cpf}")
-    public ResponseEntity<Void> delete(@PathVariable String cpf) {
-        idosoService.deletar(cpf);
+    public ResponseEntity<Void> delete(@PathVariable String cpf, Principal principal) {
+        idosoService.deletar(accessService.requireResidentAccess(cpf, principal));
         return ResponseEntity.noContent().build();
     }
 
@@ -163,29 +173,21 @@ public class IdosoController {
         }
 
         String trimmed = value.trim();
-        DateTimeParseException lastError = null;
-
         try {
             return LocalDate.parse(trimmed);
-        } catch (DateTimeParseException ex) {
-            lastError = ex;
+        } catch (DateTimeParseException ignored) {
+            // Tenta os formatos legados abaixo.
         }
 
         try {
             java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
             return LocalDate.parse(trimmed, formatter);
-        } catch (DateTimeParseException ex) {
-            lastError = ex;
+        } catch (DateTimeParseException ignored) {
+            // Tenta o formato com hífens abaixo.
         }
 
-        try {
-            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
-            return LocalDate.parse(trimmed, formatter);
-        } catch (DateTimeParseException ex) {
-            lastError = ex;
-        }
-
-        throw lastError != null ? lastError : new DateTimeParseException("Formato de data inválido", trimmed, 0);
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        return LocalDate.parse(trimmed, formatter);
     }
 
     private String normalizarCpf(String value) {

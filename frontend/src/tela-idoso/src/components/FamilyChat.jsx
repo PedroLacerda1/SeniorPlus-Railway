@@ -16,12 +16,10 @@ import ErrorMessage from "../../../components/ErrorMessage";
 import useResidentIdentity from "../hooks/useResidentIdentity";
 import {
   normalizeIdentifierDigits,
-  collectStoredResidentEntries,
   collectIdentitySources,
   resolveResidentCpf,
   resolveResidentId,
   collectCaregiverCandidates,
-  mergeIdentityRecords,
 } from "../../../utils/chatIdentity";
 const MIN_VISIBLE_MESSAGES = 30;
 const DISPLAY_TIMEZONE = "America/Sao_Paulo";
@@ -198,9 +196,9 @@ const FamilyChat = () => {
   const [caregiver, setCaregiver] = useState(null);
   const [newMessage, setNewMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(true);
+  const [, setIsSyncing] = useState(true);
   const [composerStatus, setComposerStatus] = useState(null);
-  const [residentRecords, setResidentRecords] = useState(() => collectStoredResidentEntries());
+  const [residentRecords, setResidentRecords] = useState([]);
   const [preferredTimeZone, setPreferredTimeZone] = useState(() => detectPreferredTimeZone());
 
   const { currentUser } = useAuth();
@@ -258,30 +256,8 @@ const FamilyChat = () => {
   }, []);
 
   useEffect(() => {
-    const refreshFromStorage = () => {
-      const entries = collectStoredResidentEntries();
-      setResidentRecords((prev) => mergeIdentityRecords(prev, entries));
-      updateCaregiverFromRecords(entries);
-    };
-
-    refreshFromStorage();
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("storage", refreshFromStorage);
-      window.addEventListener("residentProfileUpdated", refreshFromStorage);
-    }
-
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("storage", refreshFromStorage);
-        window.removeEventListener("residentProfileUpdated", refreshFromStorage);
-      }
-    };
-  }, [updateCaregiverFromRecords]);
-
-  useEffect(() => {
     if (!residentProfile) return;
-    setResidentRecords((prev) => mergeIdentityRecords(prev, [residentProfile]));
+    setResidentRecords([residentProfile]);
     updateCaregiverFromRecords([residentProfile]);
   }, [residentProfile, updateCaregiverFromRecords]);
 
@@ -298,22 +274,8 @@ const FamilyChat = () => {
         if (cancelled) return;
 
         if (valid.length > 0) {
-          setResidentRecords((prev) => mergeIdentityRecords(prev, valid));
+          setResidentRecords(valid);
           updateCaregiverFromRecords(valid);
-        }
-
-        if (valid.length > 0 && typeof window !== "undefined") {
-          try {
-            const caregivers = valid.flatMap((entry) => collectCaregiverCandidates(entry));
-            const enriched = {
-              ...(valid[0] && typeof valid[0] === "object" ? valid[0] : {}),
-              cuidadores: caregivers,
-            };
-            window.localStorage.setItem("residentProfile", JSON.stringify(enriched));
-            window.dispatchEvent(new Event("residentProfileUpdated"));
-          } catch (persistError) {
-            console.warn("Não foi possível persistir o perfil do residente", persistError);
-          }
         }
       } catch (caregiverError) {
         console.error("Erro ao carregar dados do cuidador vinculado:", caregiverError);
@@ -515,7 +477,7 @@ const FamilyChat = () => {
         }),
       };
     },
-    [determineSenderRole, normalizedUserCpf, normalizedUserId],
+    [determineSenderRole],
   );
 
   const fetchMessages = useCallback(
@@ -831,12 +793,6 @@ const FamilyChat = () => {
     [readableDateFormatter, timeFormatter],
   );
 
-  const lastMessageTimestamp = useMemo(() => {
-    if (!messages.length) return null;
-    const latest = messages[messages.length - 1];
-    return latest?.timestamp || null;
-  }, [messages]);
-
   const isElderlyMessage = useCallback(
     (message) => {
       if (!message) return false;
@@ -850,19 +806,6 @@ const FamilyChat = () => {
       return false;
     },
     [normalizedUserCpf, normalizedUserId],
-  );
-
-  const getSenderDisplayName = useCallback(
-    (message) => {
-      if (isElderlyMessage(message)) {
-        return "Você";
-      }
-      if (message?.senderName) {
-        return message.senderName;
-      }
-      return caregiver?.nome || "Cuidador";
-    },
-    [caregiver?.nome, isElderlyMessage],
   );
 
   useEffect(() => {

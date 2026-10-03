@@ -57,7 +57,7 @@ const addDays = (date, days) => {
 };
 
 const CalendarioAgenda = () => {
-  const { events, getEventsByDate } = useEvents() || {};
+  const { events } = useEvents() || {};
   const { getTodayMedications } = useMedication() || {};
   const { showError } = useToast();
   const { elderlyData } = useUser() || {};

@@ -76,36 +76,6 @@ const normalizeIdentifierDigits = (value) => {
   return value.toString().replace(/\D/g, "");
 };
 
-const safeJsonParse = (value) => {
-  if (!value) return null;
-  try {
-    return JSON.parse(value);
-  } catch (_) {
-    return null;
-  }
-};
-
-const collectStoredResidentEntries = () => {
-  if (typeof window === "undefined") return [];
-  const entries = [];
-  for (const key of RESIDENT_STORAGE_KEYS) {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) continue;
-    const parsed = safeJsonParse(raw);
-    if (!parsed) continue;
-    if (Array.isArray(parsed)) {
-      parsed.forEach((item) => {
-        if (item && typeof item === "object") {
-          entries.push(item);
-        }
-      });
-    } else if (typeof parsed === "object") {
-      entries.push(parsed);
-    }
-  }
-  return entries;
-};
-
 const collectIdentitySources = (baseSources = []) => {
   const sources = [];
   const seen = new Set();
@@ -241,7 +211,6 @@ const mergeIdentityRecords = (current = [], incoming = []) => {
 export {
   RESIDENT_STORAGE_KEYS,
   normalizeIdentifierDigits,
-  collectStoredResidentEntries,
   collectIdentitySources,
   resolveResidentCpf,
   resolveResidentId,

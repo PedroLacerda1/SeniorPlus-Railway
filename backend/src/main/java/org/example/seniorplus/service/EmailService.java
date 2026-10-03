@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+import java.util.Objects;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import org.springframework.lang.NonNull;
@@ -28,7 +30,7 @@ public class EmailService {
         
         helper.setTo(destinatario);
         helper.setSubject("Redefinição de Senha");
-        helper.setText(conteudo, true);
+        helper.setText(Objects.requireNonNull(conteudo), true);
         
         mailSender.send(message);
     }

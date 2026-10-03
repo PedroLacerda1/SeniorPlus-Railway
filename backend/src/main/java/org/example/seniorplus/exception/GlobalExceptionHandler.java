@@ -1,23 +1,37 @@
 package org.example.seniorplus.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
+    private static final String STATUS_FIELD = "status";
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        Map<String, Object> response = new HashMap<>();
+        response.put("erro", ex.getReason() == null ? status.getReasonPhrase() : ex.getReason());
+        response.put("tipo", status.name());
+        response.put(STATUS_FIELD, status.value());
+        return ResponseEntity.status(status).body(response);
+    }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
         Map<String, Object> response = new HashMap<>();
         response.put("erro", ex.getMessage());
         response.put("tipo", "AUTENTICACAO");
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
+        response.put(STATUS_FIELD, HttpStatus.UNAUTHORIZED.value());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
@@ -26,7 +40,7 @@ public class GlobalExceptionHandler {
         Map<String, Object> response = new HashMap<>();
         response.put("erro", "Email ou senha inválidos");
         response.put("tipo", "CREDENCIAIS_INVALIDAS");
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
+        response.put(STATUS_FIELD, HttpStatus.UNAUTHORIZED.value());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
@@ -62,7 +76,7 @@ public class GlobalExceptionHandler {
         
         response.put("erro", mensagem);
         response.put("tipo", tipo);
-        response.put("status", status.value());
+        response.put(STATUS_FIELD, status.value());
         
         return ResponseEntity.status(status).body(response);
     }
@@ -72,12 +86,10 @@ public class GlobalExceptionHandler {
         Map<String, Object> response = new HashMap<>();
         response.put("erro", "Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.");
         response.put("tipo", "ERRO_INTERNO");
-        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        response.put(STATUS_FIELD, HttpStatus.INTERNAL_SERVER_ERROR.value());
         
         // Log do erro para debug
-        System.err.println("Erro não tratado: " + ex.getClass().getName());
-        System.err.println("Mensagem: " + ex.getMessage());
-        ex.printStackTrace();
+        log.error("Unhandled application exception", ex);
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }

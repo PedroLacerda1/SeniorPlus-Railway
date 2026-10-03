@@ -1,5 +1,6 @@
 package org.example.seniorplus.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Cuidador;
 import org.example.seniorplus.domain.Idoso;
 import org.example.seniorplus.domain.Role;
@@ -8,7 +9,7 @@ import org.example.seniorplus.repository.IdosoRepository;
 import org.example.seniorplus.repository.CuidadorRepository;
 import org.example.seniorplus.repository.UsuarioRepository;
 import org.example.seniorplus.service.exception.ObjectNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.example.seniorplus.service.exception.ServiceOperationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -16,22 +17,22 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class IdosoService {
 
-    @Autowired
-    private IdosoRepository repository;
+    private static final String CPF_IDOSO_NULO = "CPF do idoso não pode ser nulo";
 
-    @Autowired
-    private CuidadorRepository cuidadorRepository;
+    private final IdosoRepository repository;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final CuidadorRepository cuidadorRepository;
+
+    private final UsuarioRepository usuarioRepository;
 
     public List<Idoso> buscarTodos() {
         try {
             return repository.findAll();
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao buscar lista de idosos: " + e.getMessage());
+            throw new ServiceOperationException("Erro ao buscar lista de idosos: " + e.getMessage(), e);
         }
     }
 
@@ -39,7 +40,7 @@ public class IdosoService {
         try {
             return repository.findByCuidadorCpf(cuidadorCpf);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao buscar idosos vinculados ao cuidador: " + cuidadorCpf + " - " + e.getMessage());
+            throw new ServiceOperationException("Erro ao buscar idosos vinculados ao cuidador: " + cuidadorCpf + " - " + e.getMessage(), e);
         }
     }
 
@@ -50,7 +51,7 @@ public class IdosoService {
             Optional<Idoso> obj = repository.findById(cpfNormalizado);
             return obj.orElseThrow(() -> new ObjectNotFoundException("Usuário não encontrado com CPF: " + cpf));
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao buscar idoso com CPF: " + cpf + " - " + e.getMessage());
+            throw new ServiceOperationException("Erro ao buscar idoso com CPF: " + cpf + " - " + e.getMessage(), e);
         }
     }
 
@@ -64,9 +65,9 @@ public class IdosoService {
             obj.refreshImc();
             return repository.save(obj);
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("Erro de integridade ao salvar o idoso: " + e.getMessage());
+            throw new ServiceOperationException("Erro de integridade ao salvar o idoso: " + e.getMessage(), e);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao salvar o idoso: " + e.getMessage());
+            throw new ServiceOperationException("Erro ao salvar o idoso: " + e.getMessage(), e);
         }
     }
 
@@ -109,12 +110,12 @@ public class IdosoService {
         } catch (ObjectNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao atualizar idoso com CPF: " + cpf + " - " + e.getMessage());
+            throw new ServiceOperationException("Erro ao atualizar idoso com CPF: " + cpf + " - " + e.getMessage(), e);
         }
     }
 
     public Idoso atribuirCuidador(String idosoCpf, String cuidadorCpf) {
-        java.util.Objects.requireNonNull(idosoCpf, "CPF do idoso não pode ser nulo");
+        java.util.Objects.requireNonNull(idosoCpf, CPF_IDOSO_NULO);
         java.util.Objects.requireNonNull(cuidadorCpf, "CPF do cuidador não pode ser nulo");
         Idoso idoso = buscarPorCpf(idosoCpf);
         Cuidador cuidador = recuperarCuidador(cuidadorCpf);
@@ -123,7 +124,7 @@ public class IdosoService {
     }
 
     public Idoso removerCuidador(String idosoCpf) {
-        java.util.Objects.requireNonNull(idosoCpf, "CPF do idoso não pode ser nulo");
+        java.util.Objects.requireNonNull(idosoCpf, CPF_IDOSO_NULO);
         Idoso idoso = buscarPorCpf(idosoCpf);
         idoso.setCuidador(null);
         return repository.save(idoso);
@@ -134,12 +135,12 @@ public class IdosoService {
         try {
             java.util.Objects.requireNonNull(cpf, "CPF não pode ser nulo");
             Idoso existente = buscarPorCpf(cpf); // garante que existe com CPF normalizado
-            String cpfValido = java.util.Objects.requireNonNull(existente.getCpf(), "CPF do idoso não pode ser nulo");
+            String cpfValido = java.util.Objects.requireNonNull(existente.getCpf(), CPF_IDOSO_NULO);
             repository.deleteById(cpfValido);
         } catch (ObjectNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao deletar idoso com CPF: " + cpf + " - " + e.getMessage());
+            throw new ServiceOperationException("Erro ao deletar idoso com CPF: " + cpf + " - " + e.getMessage(), e);
         }
     }
 

@@ -1,4 +1,4 @@
-import { Shield, Heart, Users, BookOpen } from "lucide-react"
+import { Shield, Heart, Users } from "lucide-react"
 import tecnologiaImg from '../assets/img/idoso1-landing.jpg';
 
 import '../styles/global.css'

@@ -3,17 +3,17 @@ package org.example.seniorplus.service;
 import java.util.List;
 import java.util.Objects;
 
+import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.ContatoEmergencia;
 import org.example.seniorplus.repository.ContatoEmergenciaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ContatoEmergenciaService {
 
-    @Autowired
-    private ContatoEmergenciaRepository repository;
+    private final ContatoEmergenciaRepository repository;
 
     public List<ContatoEmergencia> listarPorCpf(String cpf) {
         return repository.findByIdosoCpfOrderByNomeAsc(normalizarCpf(cpf));
@@ -28,7 +28,7 @@ public class ContatoEmergenciaService {
 
     @Transactional
     public ContatoEmergencia atualizar(String cpf, Long id, ContatoEmergencia contato) {
-        ContatoEmergencia existente = repository.findById(id)
+        ContatoEmergencia existente = repository.findById(Objects.requireNonNull(id))
             .filter(c -> normalizarCpf(c.getIdosoCpf()).equals(normalizarCpf(cpf)))
             .orElseThrow(() -> new IllegalArgumentException("Contato não encontrado"));
 
