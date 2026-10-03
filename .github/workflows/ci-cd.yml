@@ -143,11 +143,14 @@ jobs:
     name: Performance · k6 Smoke Tests
     runs-on: ubuntu-latest
     needs: [ backend ]
+    env:
+      BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Run k6 API smoke tests
+        if: ${{ env.BACKEND_BASE_URL != '' }}
         uses: grafana/k6-action@v0.2.0
         with:
           filename: tests/perf/login-smoke.js
