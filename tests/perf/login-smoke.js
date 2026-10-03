@@ -26,6 +26,11 @@ function normalizeBaseUrl(raw) {
 const baseUrl = normalizeBaseUrl(__ENV.BACKEND_BASE_URL);
 const healthEndpoint = `${baseUrl.replace(/\/$/, '')}/health`;
 
+export function setup() {
+  const res = http.get(healthEndpoint);
+  console.log(`target=${healthEndpoint} status=${res.status} body=${(res.body || '').toString().slice(0, 200)}`);
+}
+
 export default function () {
   const response = http.get(healthEndpoint, { tags: { scenario: 'login-smoke' } });
   check(response, {
