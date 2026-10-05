@@ -1,0 +1,46 @@
+name: Security Scan (OWASP)
+
+# Scan completo de dependências com a base do NVD. É lento, então não roda em cada commit.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  owasp:
+    name: OWASP Dependency-Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # restore + save separados: o cache é salvo mesmo se o scan falhar ou estourar o tempo
+      - name: Restore NVD data
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: odc-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: odc-${{ runner.os }}-
+
+      - name: Run OWASP dependency scan
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: bash tests/security/dependency-scan.sh
+
+      - name: Save NVD data
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: odc-${{ runner.os }}-${{ github.run_id }}

@@ -102,34 +102,20 @@ jobs:
   security:
     name: Segurança · Dependency Scan + JWT Check
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Java for OWASP
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-          cache: maven
-
-      # Base do NVD (~350 mil CVEs): sem cache, cada execução baixa tudo (20+ min)
-      - name: Cache OWASP NVD data
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: odc-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: odc-${{ runner.os }}-
 
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Run OWASP dependency scan
+      # O scan OWASP completo (base NVD) roda em security-scan.yml (semanal/manual)
+      - name: Run npm audit
         env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          SKIP_OWASP: 'true'
         run: bash tests/security/dependency-scan.sh || true
 
       - name: Run JWT structure/expiration validation

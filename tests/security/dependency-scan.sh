@@ -11,7 +11,9 @@ DC_ARGS=("org.owasp:dependency-check-maven:${OWASP_DC_VERSION}:check" -DskipTest
 if [[ -n "${NVD_API_KEY:-}" ]]; then
 	DC_ARGS+=(-Dnvd.api.key="${NVD_API_KEY}")
 fi
-bash ./backend/mvnw -pl backend -am "${DC_ARGS[@]}"
+if [[ "${SKIP_OWASP:-false}" != "true" ]]; then
+	bash ./backend/mvnw -pl backend -am "${DC_ARGS[@]}"
+fi
 
 pushd frontend >/dev/null
 set +o pipefail
