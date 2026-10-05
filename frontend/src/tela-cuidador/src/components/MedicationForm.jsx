@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { toLocalISODate } from "../../../utils/date"
 import { useMedication } from "../contexts/MedicationContext"
 import { useToast } from "../../../contexts/ToastContext"
 import "../styles/MedicationForm.css"
@@ -6,7 +7,7 @@ import "../styles/MedicationForm.css"
 function MedicationForm({ onSubmit, onCancel, initialData = null }) {
   const { addMedication, updateMedication } = useMedication()
   const { showError } = useToast()
-  const today = new Date().toISOString().split("T")[0]
+  const today = toLocalISODate()
 
   const [formData, setFormData] = useState(
     initialData || {

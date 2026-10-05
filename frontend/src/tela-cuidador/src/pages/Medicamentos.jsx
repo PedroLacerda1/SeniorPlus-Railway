@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { parseLocalDate } from "../../../utils/date"
 import { useMedication } from "../contexts/MedicationContext"
 import MedicationForm from "../components/MedicationForm"
 import MedicationHistoryForm from "../components/MedicationHistoryForm"
@@ -92,7 +93,7 @@ function Medicamentos() {
   const formatDate = (dateString) => {
     if (!dateString) return "Contínuo"
     const options = { year: "numeric", month: "long", day: "numeric" }
-    return new Date(dateString).toLocaleDateString("pt-BR", options)
+    return parseLocalDate(dateString).toLocaleDateString("pt-BR", options)
   }
 
   return (
@@ -236,7 +237,7 @@ function Medicamentos() {
                       .map((record) => (
                         <div key={record.id} className="history-item">
                           <div className="history-date">
-                            {new Date(record.date).toLocaleDateString("pt-BR")} às {record.time}
+                            {parseLocalDate(record.date).toLocaleDateString("pt-BR")} às {record.time}
                           </div>
                           <div className={`history-status ${record.taken ? "taken" : "not-taken"}`}>
                             {record.taken ? "Tomado" : "Não tomado"}

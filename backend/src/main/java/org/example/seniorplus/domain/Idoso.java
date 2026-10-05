@@ -82,6 +82,10 @@ public class Idoso extends BaseEntity {
     @JoinColumn(name = "idoso_id")
     private List<Endereco> enderecos = new ArrayList<>();
 
+    @Transient
+    @JsonIgnoreProperties({"enderecos", "hibernateLazyInitializer", "handler"})
+    private List<Cuidador> cuidadores;
+
     public Idoso() {
     }
 
@@ -265,6 +269,14 @@ public class Idoso extends BaseEntity {
 
     public void setImc(String imc) {
         this.imc = imc;
+    }
+
+    public List<Cuidador> getCuidadores() {
+        return cuidadores;
+    }
+
+    public void setCuidadores(List<Cuidador> cuidadores) {
+        this.cuidadores = cuidadores;
     }
 
     public Cuidador getCuidador() {

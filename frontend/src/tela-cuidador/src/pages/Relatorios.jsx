@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { toLocalISODate, parseLocalDate } from "../../../utils/date"
 import { useEvents } from "../contexts/EventsContext"
 import { useMedication } from "../contexts/MedicationContext"
 import { useUser } from "../contexts/UserContext"
@@ -17,8 +18,8 @@ function Relatorios() {
   const [chartType, setChartType] = useState("bar")
   const [eventChartType, setEventChartType] = useState("bar")
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    end: new Date().toISOString().split("T")[0],
+    start: toLocalISODate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
+    end: toLocalISODate(),
   })
   const [activeTab, setActiveTab] = useState("eventos")
   const [isExporting, setIsExporting] = useState(false)
@@ -99,13 +100,13 @@ function Relatorios() {
   // Format date for display
   const formatDate = (dateString) => {
     const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" }
-    return new Date(dateString).toLocaleDateString("pt-BR", options)
+    return parseLocalDate(dateString).toLocaleDateString("pt-BR", options)
   }
 
   // Format date for chart labels
   const formatDateShort = (dateString) => {
     const options = { day: "2-digit", month: "2-digit" }
-    return new Date(dateString).toLocaleDateString("pt-BR", options)
+    return parseLocalDate(dateString).toLocaleDateString("pt-BR", options)
   }
 
   // Get dates between start and end date
@@ -115,7 +116,7 @@ function Relatorios() {
     const end = new Date(endDate)
 
     while (currentDate <= end) {
-      dates.push(new Date(currentDate).toISOString().split("T")[0])
+      dates.push(toLocalISODate(new Date(currentDate)))
       currentDate.setDate(currentDate.getDate() + 1)
     }
 
@@ -183,7 +184,7 @@ function Relatorios() {
           csvContent += `${event.date},${event.title},${event.category},${event.startTime},${event.endTime},${event.location || ""}\n`
         })
 
-        filename = `eventos_${user?.name || "idoso"}_${new Date().toISOString().split("T")[0]}.csv`
+        filename = `eventos_${user?.name || "idoso"}_${toLocalISODate()}.csv`
       } else {
         // Header
         csvContent = "Medicamento,Doses Tomadas,Doses Perdidas,Taxa de Adesão\n"
@@ -196,7 +197,7 @@ function Relatorios() {
           csvContent += `${med.name},${med.taken},${med.missed},${adherenceRate}%\n`
         })
 
-        filename = `medicamentos_${user?.name || "idoso"}_${new Date().toISOString().split("T")[0]}.csv`
+        filename = `medicamentos_${user?.name || "idoso"}_${toLocalISODate()}.csv`
       }
 
       // Create download link

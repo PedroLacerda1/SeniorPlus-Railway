@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { toLocalISODate } from "../../../utils/date"
 import '../styles/MedicamentosHoje.css';
 import { Pill } from 'lucide-react';
 import { useMedication } from '../../../tela-cuidador/src/contexts/MedicationContext';
@@ -14,7 +15,7 @@ const MedicamentosHoje = () => {
     hoje.map((med) => ({ id: med.id, times: med.times, time: med.time })),
   );
 
-  const todayISO = new Date().toISOString().split('T')[0];
+  const todayISO = toLocalISODate();
 
   const statusPorMedicamento = useMemo(() => {
     const map = new Map();

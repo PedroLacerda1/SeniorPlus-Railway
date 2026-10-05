@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useAccessibility } from "../../../contexts/AccessibilityContext";
 import { useToast } from "../../../contexts/ToastContext";
+import { getReminderPrefs, saveReminderPrefs } from "../../../utils/reminderPrefs";
 import "../styles/Configuracoes.css";
 
 function ConfiguracoesIdoso() {
@@ -19,9 +20,9 @@ function ConfiguracoesIdoso() {
   } = useAccessibility();
   const { showSuccess } = useToast();
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [reminderTime, setReminderTime] = useState("30");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => getReminderPrefs().notificationsEnabled);
+  const [soundEnabled, setSoundEnabled] = useState(() => getReminderPrefs().soundEnabled);
+  const [reminderTime, setReminderTime] = useState(() => String(getReminderPrefs().reminderMinutes));
   const [fontSizeOption, setFontSizeOption] = useState("medium");
 
   useEffect(() => {
@@ -40,6 +41,11 @@ function ConfiguracoesIdoso() {
   };
 
   const handleSave = () => {
+    saveReminderPrefs({
+      notificationsEnabled,
+      soundEnabled,
+      reminderMinutes: Number(reminderTime) || 30,
+    });
     if (showSuccess) {
       showSuccess("Preferências salvas com sucesso!");
     }

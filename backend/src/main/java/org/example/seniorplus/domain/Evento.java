@@ -41,7 +41,7 @@ public class Evento extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String observacoes;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "idoso_id", referencedColumnName = "cpf")
     private Idoso idoso;
 

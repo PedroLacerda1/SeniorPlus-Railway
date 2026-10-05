@@ -11,6 +11,18 @@ const ENABLE_API_MOCKS = process.env.REACT_APP_ENABLE_API_MOCKS === "true";
 // Variável interna para armazenar o token em memória
 let authToken = null;
 
+// Lê o corpo JSON tolerando respostas vazias (204 etc.)
+async function parseJsonBody(response) {
+  if (response.status === 204) return null;
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return null;
+  }
+}
+
 // Cria um erro padronizado com status e detalhes da resposta
 async function buildApiError(response) {
   let message = `Erro ${response.status}`;
@@ -276,7 +288,7 @@ export const api = {
         throw await buildApiError(response);
       }
 
-      return await response.json();
+      return await parseJsonBody(response);
     } catch (error) {
       console.warn("Erro na requisição GET", error);
       if (ENABLE_API_MOCKS) {
@@ -320,7 +332,7 @@ export const api = {
         throw await buildApiError(response);
       }
 
-      return await response.json();
+      return await parseJsonBody(response);
     } catch (error) {
       console.warn("Erro na requisição POST", error);
       if (ENABLE_API_MOCKS) {
@@ -364,7 +376,7 @@ export const api = {
         throw await buildApiError(response);
       }
 
-      return await response.json();
+      return await parseJsonBody(response);
     } catch (error) {
       console.warn("Erro na requisição PUT", error);
       if (ENABLE_API_MOCKS) {

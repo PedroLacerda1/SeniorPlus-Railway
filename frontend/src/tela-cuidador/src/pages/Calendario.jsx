@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { toLocalISODate } from "../../../utils/date"
 import { useLocation } from "react-router-dom"
 import { useEvents } from "../contexts/EventsContext"
 import { useMedication } from "../contexts/MedicationContext"
@@ -110,7 +111,7 @@ function Calendario() {
 
   // Formatar data para string no formato YYYY-MM-DD
   const formatDateToString = (date) => {
-    return date.toISOString().split("T")[0]
+    return toLocalISODate(date)
   }
 
   // Navegar para o mês anterior

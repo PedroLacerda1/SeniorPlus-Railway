@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { api } from '../services/api'
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Verificar se há usuário logado no localStorage ao inicializar
+  // Verificar se hÃ¡ usuÃ¡rio logado no localStorage ao inicializar
   useEffect(() => {
     const checkAuthState = () => {
       try {
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
           if (normalized !== parsed) {
             localStorage.setItem("currentUser", JSON.stringify(normalized))
           }
-          // Certificar que o token persistido é reidratado no wrapper da API
+          // Certificar que o token persistido Ã© reidratado no wrapper da API
           const token = localStorage.getItem('authToken')
           if (token) {
             api.setAuthToken(token)
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
           api.setAuthToken(null)
         }
       } catch (error) {
-        console.error("Erro ao verificar estado de autenticação:", error)
+        console.error("Erro ao verificar estado de autenticaÃ§Ã£o:", error)
         // Limpar dados corrompidos
         localStorage.removeItem("currentUser")
         localStorage.removeItem("isLoggedIn")
@@ -91,10 +91,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('authToken', token)
         api.setAuthToken(token)
 
-        // limpar caches específicos do usuário anterior antes de hidratar o novo contexto
+        // limpar caches especÃ­ficos do usuÃ¡rio anterior antes de hidratar o novo contexto
         clearUserScopedStorage()
 
-        // buscar dados do usuário
+        // buscar dados do usuÃ¡rio
         const userResponse = await api.get('/api/v1/auth/conta')
         const userData = normalizeUser(userResponse)
 
@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }) => {
 
         return userData
       }
-      const e = new Error('Credenciais inválidas')
+      const e = new Error('Credenciais invÃ¡lidas')
       e.status = 401
       throw e
     } catch (error) {
@@ -127,23 +127,23 @@ export const AuthProvider = ({ children }) => {
       // Tenta registrar diretamente pelo wrapper api
       const payload = await api.post('/api/v1/auth/register', userData)
 
-      // Backend pode retornar o token direto; se não, fazemos login
+      // Backend pode retornar o token direto; se nÃ£o, fazemos login
       let token = payload?.token
       if (!token) {
         const loginResp = await api.post('/api/v1/auth/login', { email: userData.email, senha: userData.senha })
         token = loginResp?.token
       }
 
-      if (!token) throw new Error('Token não recebido após registro')
+      if (!token) throw new Error('Token nÃ£o recebido apÃ³s registro')
 
       // Persistir token e configurar wrapper
       localStorage.setItem('authToken', token)
       api.setAuthToken(token)
 
-      // Limpa caches antes de hidratar o novo usuário
+      // Limpa caches antes de hidratar o novo usuÃ¡rio
       clearUserScopedStorage()
 
-      // Buscar dados completos do usuário
+      // Buscar dados completos do usuÃ¡rio
       const userInfoResponse = await api.get('/api/v1/auth/conta')
       const userInfo = normalizeUser(userInfoResponse)
       setCurrentUser(userInfo)
@@ -163,23 +163,23 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Solicitar redefinição de senha por e-mail
+  // Solicitar redefiniÃ§Ã£o de senha por e-mail
   const requestPasswordReset = async (email) => {
     try {
       await api.post('/api/v1/reset-senha/solicitar', { email })
       return true
     } catch (error) {
-      const e = new Error(error?.message || 'Falha ao solicitar redefinição de senha.')
+      const e = new Error(error?.message || 'Falha ao solicitar redefiniÃ§Ã£o de senha.')
       if (error?.status) e.status = error.status
       if (error?.details) e.details = error.details
       throw e
     }
   }
 
-  // Confirmar redefinição de senha com token e nova senha
+  // Confirmar redefiniÃ§Ã£o de senha com token e nova senha
   const confirmPasswordReset = async (token, senha) => {
     try {
-      await api.post('/api/v1/reset-senha/confirmar', { token, senha })
+      await api.post('/api/v1/reset-senha/resetar', { token, novaSenha: senha })
       return true
     } catch (error) {
       const e = new Error(error?.message || 'Falha ao redefinir senha.')
@@ -221,7 +221,7 @@ export const AuthProvider = ({ children }) => {
       try {
         localStorage.setItem("currentUser", JSON.stringify(merged))
       } catch (error) {
-        console.warn("Não foi possível persistir currentUser atualizado:", error)
+        console.warn("NÃ£o foi possÃ­vel persistir currentUser atualizado:", error)
       }
       return merged
     })

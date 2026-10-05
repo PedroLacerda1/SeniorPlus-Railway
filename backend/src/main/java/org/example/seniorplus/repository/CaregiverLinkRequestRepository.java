@@ -12,5 +12,7 @@ public interface CaregiverLinkRequestRepository extends JpaRepository<CaregiverL
 
     List<CaregiverLinkRequest> findByCuidadorCpfOrderByCreatedAtDesc(String cuidadorCpf);
 
+    List<CaregiverLinkRequest> findByCuidadorCpfAndStatus(String cuidadorCpf, CaregiverLinkStatus status);
+
     Optional<CaregiverLinkRequest> findTopByIdosoCpfAndCuidadorCpfAndStatus(String idosoCpf, String cuidadorCpf, CaregiverLinkStatus status);
 }

@@ -11,6 +11,10 @@ public class MensagemResponse {
     private String idosoId;
     private boolean lida;
     private LocalDateTime dataHora;
+    private String remetenteRole;
+
+    public String getRemetenteRole() { return remetenteRole; }
+    public void setRemetenteRole(String remetenteRole) { this.remetenteRole = remetenteRole; }
 
     public MensagemResponse() {}
 

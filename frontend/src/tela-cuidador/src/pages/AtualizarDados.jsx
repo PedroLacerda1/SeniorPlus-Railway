@@ -621,7 +621,7 @@ function AtualizarDados() {
 
         <section className="link-card">
           <div className="link-card-header">
-            <h2>Vínculo com o cuidador</h2>
+            <h2>Conexões com o idoso</h2>
             <span className="link-counter">{linkedIdosos.length} idoso(s) vinculado(s)</span>
           </div>
 

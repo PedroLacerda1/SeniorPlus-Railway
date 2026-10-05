@@ -47,7 +47,7 @@ public class IdosoController {
     @GetMapping("/cuidador/{cpf}")
     public ResponseEntity<List<Idoso>> findByCaregiver(@PathVariable String cpf, Principal principal) {
         accessService.requireCaregiverAccess(cpf, principal);
-        List<Idoso> vinculados = idosoService.buscarPorCuidadorCpf(cpf);
+        List<Idoso> vinculados = accessService.listResidentsOfCaregiver(cpf);
         return ResponseEntity.ok(vinculados);
     }
 
@@ -67,11 +67,12 @@ public class IdosoController {
 
         if (role == Role.ROLE_IDOSO) {
             Idoso idoso = idosoService.buscarPorCpf(usuario.getCpf());
+            idoso.setCuidadores(accessService.listCaregiversOfResident(idoso));
             return ResponseEntity.ok(idoso);
         }
 
         if (role == Role.ROLE_CUIDADOR) {
-            List<Idoso> vinculados = idosoService.buscarPorCuidadorCpf(usuario.getCpf());
+            List<Idoso> vinculados = accessService.listResidentsOfCaregiver(usuario.getCpf());
             if (vinculados.isEmpty()) {
                 return ResponseEntity.noContent().build();
             }

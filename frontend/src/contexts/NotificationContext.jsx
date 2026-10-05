@@ -5,6 +5,8 @@ import { emitEmergencyNotification } from "../utils/emergency"
 import { useToast } from "./ToastContext"
 import { useAuth } from "../tela-auth/src/contexts/AuthContext"
 import { useUser } from "../tela-cuidador/src/contexts/UserContext"
+import { toLocalISODate } from "../utils/date"
+import { getReminderPrefs } from "../utils/reminderPrefs"
 
 const NotificationContext = createContext()
 
@@ -142,7 +144,7 @@ export const NotificationProvider = ({ children }) => {
     return () => clearInterval(interval)
   }, [medications, events, notifications])
 
-  const isSameDay = (dateA, dateB) => dateA.toISOString().split("T")[0] === dateB.toISOString().split("T")[0]
+  const isSameDay = (dateA, dateB) => toLocalISODate(dateA) === toLocalISODate(dateB)
 
   const hasNotification = (predicate) => notifications.some(predicate)
 
@@ -171,7 +173,7 @@ export const NotificationProvider = ({ children }) => {
       return 'unsupported'
     }
     if (Notification.permission === 'granted') {
-      setPermission(true)
+      setPermission("granted")
       return 'granted'
     }
     if (Notification.permission === 'denied') {
@@ -180,7 +182,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       const permission = await Notification.requestPermission()
       if (permission === 'granted') {
-        setPermission(true)
+        setPermission("granted")
         if (showSuccess) showSuccess('Notificações do sistema ativadas.')
       } else if (permission === 'denied') {
         if (showError) showError('Permissão negada para notificações.')
@@ -195,12 +197,13 @@ export const NotificationProvider = ({ children }) => {
   // Verificar medicamentos para lembretes
   const checkMedicationReminders = () => {
     if (!medications || medications.length === 0) return
+    if (!getReminderPrefs().notificationsEnabled) return
 
     const now = new Date()
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
     const currentTime = `${currentHour.toString().padStart(2, "0")}:${currentMinute.toString().padStart(2, "0")}`
-    const todayISO = now.toISOString().split("T")[0]
+    const todayISO = toLocalISODate(now)
 
     purgeObsoleteLocks(todayISO)
 
@@ -237,7 +240,7 @@ export const NotificationProvider = ({ children }) => {
         }
 
         const notification = {
-          id: Date.now().toString(),
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type: "medication",
           title: "Lembrete de Medicamento",
           message: `Hora de tomar ${medication.name} - ${medication.dosage}`,
@@ -252,7 +255,7 @@ export const NotificationProvider = ({ children }) => {
 
         // Adicionar à lista de notificações
         addNotification(notification)
-        playNotificationSound()
+        if (getReminderPrefs().soundEnabled) playNotificationSound()
         notificationLockRef.current.add(notificationKey)
 
         // Enviar notificação do navegador se permitido
@@ -264,16 +267,23 @@ export const NotificationProvider = ({ children }) => {
   }
 
   // Verificar eventos para lembretes
+  const formatLead = (minutes) => {
+    if (minutes >= 1440) return `${Math.round(minutes / 1440)} dia(s)`
+    if (minutes >= 60) return `${Math.round(minutes / 60)} hora(s)`
+    return `${minutes} minutos`
+  }
+
   const checkEventReminders = () => {
     if (!events || events.length === 0) return
+    const prefs = getReminderPrefs()
+    if (!prefs.notificationsEnabled) return
+    const lead = prefs.reminderMinutes
 
     const now = new Date()
-    const today = now.toISOString().split("T")[0]
+    const today = toLocalISODate(now)
     purgeObsoleteLocks(today)
 
     events.forEach((event) => {
-      if (event.date !== today) return
-
       const eventTime = event.startTime || "00:00"
       const [eventHour, eventMinute] = eventTime.split(":").map(Number)
 
@@ -283,8 +293,8 @@ export const NotificationProvider = ({ children }) => {
 
       const timeDiff = (eventDate.getTime() - now.getTime()) / (1000 * 60)
 
-      // Notificar 30 minutos antes
-      if (timeDiff > 29 && timeDiff < 31) {
+      // Notificar com a antecedência escolhida nas preferências
+      if (timeDiff > lead - 1 && timeDiff < lead + 1) {
         const notificationKey = JSON.stringify({
           type: "event",
           target: event.id,
@@ -308,10 +318,10 @@ export const NotificationProvider = ({ children }) => {
 
         // Criar notificação
         const notification = {
-          id: Date.now().toString(),
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type: "event",
           title: "Lembrete de Evento",
-          message: `${event.title} começa em 30 minutos (${event.startTime})`,
+          message: `${event.title} começa em ${formatLead(lead)} (${event.startTime})`,
           time: new Date().toISOString(),
           read: false,
           data: {
@@ -323,7 +333,7 @@ export const NotificationProvider = ({ children }) => {
 
         // Adicionar à lista de notificações
         addNotification(notification)
-        playNotificationSound()
+        if (prefs.soundEnabled) playNotificationSound()
         notificationLockRef.current.add(notificationKey)
 
         // Enviar notificação do navegador se permitido
@@ -389,7 +399,7 @@ export const NotificationProvider = ({ children }) => {
   // Criar notificação manual
   const createNotification = (title, message, type = "info") => {
     const notification = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type,
       title,
       message,

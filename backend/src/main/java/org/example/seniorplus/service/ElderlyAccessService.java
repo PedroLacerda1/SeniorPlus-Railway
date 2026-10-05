@@ -34,6 +34,7 @@ public class ElderlyAccessService {
     private final CaregiverLinkRequestRepository caregiverLinkRequestRepository;
     private final EventoRepository eventoRepository;
     private final MedicamentoRepository medicamentoRepository;
+    private final org.example.seniorplus.repository.CuidadorRepository cuidadorRepository;
 
     public String requireResidentAccess(String cpf, Principal principal) {
         String residentCpf = normalizeCpf(cpf);
@@ -55,9 +56,30 @@ public class ElderlyAccessService {
             return idosoRepository.findById(normalizeCpf(actor.getCpf())).stream().toList();
         }
         if (actor.getRole() == Role.ROLE_CUIDADOR) {
-            return idosoRepository.findByCuidadorCpf(normalizeCpf(actor.getCpf()));
+            return listResidentsOfCaregiver(actor.getCpf());
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem acesso a esses dados.");
+    }
+
+    public List<Idoso> listResidentsOfCaregiver(String caregiverCpf) {
+        String cpf = normalizeCpf(caregiverCpf);
+        java.util.Map<String, Idoso> result = new java.util.LinkedHashMap<>();
+        idosoRepository.findByCuidadorCpf(cpf).forEach(idoso -> result.put(idoso.getCpf(), idoso));
+        caregiverLinkRequestRepository.findByCuidadorCpfAndStatus(cpf, CaregiverLinkStatus.ACCEPTED)
+                .forEach(link -> idosoRepository.findById(link.getIdosoCpf())
+                        .ifPresent(idoso -> result.putIfAbsent(idoso.getCpf(), idoso)));
+        return new java.util.ArrayList<>(result.values());
+    }
+
+    public List<Cuidador> listCaregiversOfResident(Idoso idoso) {
+        java.util.Map<String, Cuidador> result = new java.util.LinkedHashMap<>();
+        if (idoso.getCuidador() != null) {
+            result.put(idoso.getCuidador().getCpf(), idoso.getCuidador());
+        }
+        caregiverLinkRequestRepository.findByIdosoCpfAndStatusOrderByCreatedAtDesc(idoso.getCpf(), CaregiverLinkStatus.ACCEPTED)
+                .forEach(link -> cuidadorRepository.findById(link.getCuidadorCpf())
+                        .ifPresent(c -> result.putIfAbsent(c.getCpf(), c)));
+        return new java.util.ArrayList<>(result.values());
     }
 
     public void requireCaregiverAccess(String cpf, Principal principal) {

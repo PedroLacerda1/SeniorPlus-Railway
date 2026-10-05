@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { toLocalISODate } from "../../../utils/date"
 import { useEvents } from "../contexts/EventsContext"
 import { useToast } from "../../../contexts/ToastContext"
 import "../styles/EventForm.css"
@@ -6,7 +7,7 @@ import "../styles/EventForm.css"
 function EventForm({ onSubmit, onCancel, initialData = null }) {
   const { addEvent, updateEvent } = useEvents()
   const { showError } = useToast()
-  const today = new Date().toISOString().split("T")[0]
+  const today = toLocalISODate()
 
   const [formData, setFormData] = useState(
     initialData || {

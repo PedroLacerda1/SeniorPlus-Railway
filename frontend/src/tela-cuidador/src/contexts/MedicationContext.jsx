@@ -1,8 +1,10 @@
 import { createContext, useState, useContext, useEffect, useCallback } from "react"
+import { toLocalISODate } from "../../../utils/date"
 import { v4 as uuidv4 } from "uuid"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { useToast } from "../../../contexts/ToastContext"
 import { useUser } from "./UserContext"
+import { api } from "../../../tela-auth/src/services/api"
 
 const MedicationContext = createContext()
 
@@ -14,6 +16,34 @@ const normalizeCpf = (value) => {
   return digits.length === 11 ? digits : null
 }
 
+const timePattern = /^([01]\d|2[0-3]):[0-5]\d/
+
+const fromApi = (medication) => ({
+  id: medication.id,
+  name: medication.nomeMedicamento,
+  dosage: medication.dosagem,
+  frequency: medication.formaAdministracao,
+  times: (medication.horarios || []).map((t) => String(t).slice(0, 5)),
+  startDate: medication.dataInicio,
+  endDate: medication.dataFim || "",
+  instructions: medication.instrucoes,
+})
+
+const toApi = (medication, userName) => ({
+  nomeMedicamento: medication.name,
+  dosagem: medication.dosage,
+  formaAdministracao: medication.frequency || "Oral",
+  instrucoes: medication.instructions || medication.notes || "",
+  dataInicio: medication.startDate,
+  dataFim: medication.endDate || null,
+  horarios: (medication.times || []).filter((t) => timePattern.test(t)),
+  repetirDiariamente: true,
+  intervaloHoras: 0,
+  intervaloMinutos: 0,
+  nomeUsuario: userName || "Idoso",
+  notificarPorApp: true,
+})
+
 export const useMedication = () => useContext(MedicationContext)
 
 export const MedicationProvider = ({ children }) => {
@@ -21,6 +51,7 @@ export const MedicationProvider = ({ children }) => {
   const { elderlyData } = useUser()
   const { showSuccess, showError, showWarning } = useToast()
   const residentCpf = normalizeCpf(elderlyData?.cpf || (currentUser?.role === "elderly" ? currentUser?.cpf : null))
+  const userDisplayName = elderlyData?.name || currentUser?.name
   const accountKey = currentUser?.id || currentUser?.email || currentUser?.username || null
   const scopeKey = residentCpf || (accountKey ? `account:${accountKey}` : null)
   const medicationStorageKey = scopeKey ? `${MEDICATION_STORAGE_PREFIX}${scopeKey}` : null
@@ -44,7 +75,7 @@ export const MedicationProvider = ({ children }) => {
       frequency: medication.frequency || medication.frequencia || "",
       time: medication.time || medication.horarios || "",
       times: parseTimes(medication.times || medication.time || medication.horarios),
-      startDate: medication.startDate || medication.dataInicio || new Date().toISOString().split("T")[0],
+      startDate: medication.startDate || medication.dataInicio || toLocalISODate(),
       endDate: medication.endDate || medication.dataFim || "",
       status: medication.status || "active",
       instructions: medication.instructions || medication.instrucoes || "",
@@ -109,6 +140,30 @@ export const MedicationProvider = ({ children }) => {
     setHistoryState({ scopeKey, items: history })
   }, [historyStorageKey, medicationStorageKey, normalizeMedication, parseStoredValue, scopeKey])
 
+  // Sincroniza com o backend para que cuidador e idoso vejam os mesmos medicamentos
+  useEffect(() => {
+    if (!residentCpf) return undefined
+    let cancelled = false
+    const fetchRemote = async () => {
+      try {
+        const remote = await api.listMedicamentos(residentCpf)
+        if (cancelled || !Array.isArray(remote)) return
+        setMedicationState({
+          scopeKey,
+          items: remote.map(fromApi).map((medication) => normalizeMedication(medication)).filter(Boolean),
+        })
+      } catch (error) {
+        console.warn("Falha ao sincronizar medicamentos com o servidor", error)
+      }
+    }
+    fetchRemote()
+    const interval = setInterval(fetchRemote, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [residentCpf, scopeKey, normalizeMedication])
+
   useEffect(() => {
     if (typeof window === "undefined") return undefined
 
@@ -161,6 +216,21 @@ export const MedicationProvider = ({ children }) => {
       updatedAt: new Date().toISOString(),
     })
     setScopedMedications((previous) => [...previous, newMedication])
+    if (residentCpf) {
+      api.createMedicamento(residentCpf, toApi(newMedication, userDisplayName))
+        .then((saved) => {
+          if (!saved?.id) return
+          setScopedMedications((previous) =>
+            previous.map((medication) =>
+              medication.id === newMedication.id ? { ...medication, id: saved.id } : medication,
+            ),
+          )
+        })
+        .catch((error) => {
+          setScopedMedications((previous) => previous.filter((medication) => medication.id !== newMedication.id))
+          showError(error?.message || "Não foi possível salvar o medicamento no servidor.")
+        })
+    }
     showSuccess(`Medicamento ${name} adicionado com sucesso!`)
     return newMedication
   }
@@ -179,12 +249,24 @@ export const MedicationProvider = ({ children }) => {
         return medication
       }),
     )
+    const current = medications.find((medication) => medication.id === id)
+    if (residentCpf && typeof id === "number") {
+      const payloadSource = normalizeMedication({ ...current, ...updatedMedication, id })
+      api.updateMedicamento(id, toApi(payloadSource, userDisplayName)).catch((error) => {
+        showError(error?.message || "Não foi possível atualizar o medicamento no servidor.")
+      })
+    }
     showSuccess(`Medicamento atualizado com sucesso!`)
   }
 
   const deleteMedication = (id) => {
     const medicationToDelete = medications.find((med) => med.id === id)
     setScopedMedications((previous) => previous.filter((medication) => medication.id !== id))
+    if (residentCpf && typeof id === "number") {
+      api.deleteMedicamento(id).catch((error) => {
+        showError(error?.message || "Não foi possível remover o medicamento no servidor.")
+      })
+    }
     if (medicationToDelete) {
       showSuccess(`Medicamento ${medicationToDelete.name} removido com sucesso!`)
     }
@@ -217,7 +299,7 @@ export const MedicationProvider = ({ children }) => {
 
     const normalizedSlot = slot ? slot.trim() : ""
     const now = new Date()
-    const dateIso = now.toISOString().split("T")[0]
+    const dateIso = toLocalISODate(now)
     const timeISO = now.toTimeString().split(" ")[0].substring(0, 5)
 
     const newRecord = {
@@ -268,7 +350,7 @@ export const MedicationProvider = ({ children }) => {
   }
 
   const getTodayMedications = () => {
-    const today = new Date().toISOString().split("T")[0]
+    const today = toLocalISODate()
     return medications.filter((medication) => {
       const startDate = new Date(medication.startDate)
       const endDate = medication.endDate ? new Date(medication.endDate) : new Date(2099, 11, 31)
@@ -293,7 +375,7 @@ export const MedicationProvider = ({ children }) => {
           dosage: item.dosagem || item.dosage || "",
           frequency: item.frequencia || item.frequency || "",
           time: item.horario || item.time || "",
-          startDate: item.dataInicio || item.startDate || new Date().toISOString().split("T")[0],
+          startDate: item.dataInicio || item.startDate || toLocalISODate(),
           endDate: item.dataFim || item.endDate || "",
           status: "active",
           instructions: item.instrucoes || item.instructions || "",

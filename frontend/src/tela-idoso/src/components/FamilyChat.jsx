@@ -400,6 +400,9 @@ const FamilyChat = () => {
   
 
   useEffect(() => {
+    setMessages([]);
+    setVisibleCount(MIN_VISIBLE_MESSAGES);
+    initialLoadRef.current = true;
     if (!storageKey) return;
 
     try {
@@ -467,7 +470,7 @@ const FamilyChat = () => {
 
       return {
         ...mapped,
-        senderRole: determineSenderRole({
+        senderRole: raw?.remetenteRole || determineSenderRole({
           remetente: senderName,
           destinatario: recipientName,
           fromCpf: mapped.fromCpf,

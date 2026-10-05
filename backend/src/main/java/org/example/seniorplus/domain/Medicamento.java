@@ -36,8 +36,8 @@ public class Medicamento extends BaseEntity {
     
     private LocalDate dataFim;
     
-    @ElementCollection
-    @CollectionTable(name = "medicamento_horarios", joinColumns = @JoinColumn(name = "medicamento_id"))
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "medicamento_horarios",     joinColumns = @JoinColumn(name = "medicamento_id"))
     @Column(name = "horario")
     private List<LocalTime> horarios; // Horários do dia para alertas
 

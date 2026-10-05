@@ -3,6 +3,8 @@ package org.example.seniorplus.service;
 import lombok.RequiredArgsConstructor;
 import org.example.seniorplus.domain.Idoso;
 import org.example.seniorplus.domain.Mensagem;
+import org.example.seniorplus.domain.Role;
+import org.example.seniorplus.repository.UsuarioRepository;
 import org.example.seniorplus.dto.MensagemRequest;
 import org.example.seniorplus.dto.MensagemResponse;
 import org.example.seniorplus.repository.IdosoRepository;
@@ -26,6 +28,7 @@ public class MensagemService {
 
     private final IdosoRepository idosoRepository;
 
+    private final UsuarioRepository usuarioRepository;
     @Transactional(readOnly = true)
     public List<MensagemResponse> getMensagensDoIdoso(String cpf, String id) {
         String cpfResolvido = resolverCpf(cpf, id)
@@ -78,7 +81,7 @@ public class MensagemService {
     }
 
     private MensagemResponse toResponse(Mensagem mensagem) {
-        return new MensagemResponse(
+        MensagemResponse response = new MensagemResponse(
             mensagem.getId(),
             mensagem.getConteudo(),
             mensagem.getRemetente(),
@@ -88,5 +91,15 @@ public class MensagemService {
             mensagem.isLida(),
             mensagem.getDataHora()
         );
+        if (mensagem.getRemetente() != null) {
+            usuarioRepository.findByEmail(mensagem.getRemetente()).ifPresent(usuario -> {
+                if (usuario.getRole() == Role.ROLE_CUIDADOR) {
+                    response.setRemetenteRole("caregiver");
+                } else if (usuario.getRole() == Role.ROLE_IDOSO) {
+                    response.setRemetenteRole("elderly");
+                }
+            });
+        }
+        return response;
     }
 }

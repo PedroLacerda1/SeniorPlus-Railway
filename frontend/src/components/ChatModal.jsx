@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useUser } from "../tela-cuidador/src/contexts/UserContext"
+import { serverTimestampToISO } from "../utils/date"
 import { useAuth } from "../tela-auth/src/contexts/AuthContext"
 import { useTheme } from "../contexts/ThemeContext" 
 import { useChat } from "../contexts/ChatContext"
@@ -127,15 +128,18 @@ function ChatModal() {
     }, [currentUser?.cpf, elderlyData, isCareGiver, isOpen])
 
     const identitySources = useMemo(() => {
-        const base = [
-            elderlyData,
-            currentUser?.role === "elderly" ? currentUser : null,
-            currentUser?.assistedPerson,
-            currentUser?.elderlyProfile,
-            ...(residentRecords || []),
-        ]
+        const linkedResidents = isCareGiver() ? (residentRecords || []) : []
+        const base = linkedResidents.length > 0
+            ? linkedResidents
+            : [
+                elderlyData,
+                currentUser?.role === "elderly" ? currentUser : null,
+                currentUser?.assistedPerson,
+                currentUser?.elderlyProfile,
+                ...(residentRecords || []),
+            ]
         return collectIdentitySources(base)
-    }, [elderlyData, currentUser, residentRecords])
+    }, [elderlyData, currentUser, residentRecords, isCareGiver])
 
     const activeCpf = useMemo(() => resolveResidentCpf(identitySources), [identitySources])
     const activeId = useMemo(() => resolveResidentId(identitySources), [identitySources])
@@ -316,8 +320,8 @@ function ChatModal() {
                         const fromCpf = normalizeIdentifier(fromCpfRaw) || fromCpfRaw
                         const toCpf = normalizeIdentifier(toCpfRaw) || toCpfRaw
                         const messageIdosoCpf = associatedCpf || associatedCpfRaw || null
-                        const senderRole = resolveSenderRole(m.remetente, m.destinatario)
-                        const timestamp = m.dataHora || m.timestamp || new Date().toISOString()
+                        const senderRole = m.remetenteRole || resolveSenderRole(m.remetente, m.destinatario)
+                        const timestamp = serverTimestampToISO(m.dataHora) || m.timestamp || new Date().toISOString()
                         return {
                             id: m.id ?? `srv_${Date.now()}_${Math.random()}`,
                             fromId: m.fromId || null,
@@ -524,9 +528,9 @@ function ChatModal() {
                         fromCpf: resp.fromCpf || caregiverCpfDigits || fallbackCaregiverId,
                         toCpf: resp.toCpf || activeCpfDigits || activeIdValue,
                         idosoCpf: resp.idosoCpf || activeCpfDigits || activeIdValue,
-                        senderRole: resolveSenderRole(resp.remetente, resp.destinatario),
+                        senderRole: resp.remetenteRole || resolveSenderRole(resp.remetente, resp.destinatario),
                         message: resp.conteudo || payload.conteudo,
-                        timestamp: resp.dataHora || new Date().toISOString(),
+                        timestamp: serverTimestampToISO(resp.dataHora) || new Date().toISOString(),
                         read: resp.lida || false,
                     }
                     setMessages((prev) => prev.map((m) => (m.id === optimistic.id ? mapped : m)))

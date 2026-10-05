@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from "uuid"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { useToast } from "../../../contexts/ToastContext"
 import { useUser } from "./UserContext"
+import { toLocalISODate } from "../../../utils/date"
+import { api } from "../../../tela-auth/src/services/api"
 
 const EventsContext = createContext()
 
@@ -12,6 +14,33 @@ const normalizeCpf = (value) => {
   const digits = String(value || "").replace(/\D/g, "")
   return digits.length === 11 ? digits : null
 }
+
+const toApiStatus = (status) => (status === "ConcluÃ­do" ? "CONCLUIDO" : "PENDENTE")
+const fromApiStatus = (status) => (String(status || "").toUpperCase().startsWith("CONCLU") ? "ConcluÃ­do" : "Pendente")
+
+const fromApi = (event) => ({
+  id: event.id,
+  title: event.titulo,
+  date: event.data,
+  startTime: event.horaInicio ? String(event.horaInicio).slice(0, 5) : "",
+  endTime: event.horaFim ? String(event.horaFim).slice(0, 5) : "",
+  location: event.localEvento || "",
+  description: event.descricao || "",
+  category: event.categoria || "Outro",
+  status: fromApiStatus(event.status),
+})
+
+const toApi = (event) => ({
+  titulo: event.title,
+  descricao: event.description || "",
+  data: event.date,
+  horaInicio: event.startTime || null,
+  horaFim: event.endTime || null,
+  categoria: event.category || "Outro",
+  localEvento: event.location || "",
+  observacoes: "",
+  status: toApiStatus(event.status),
+})
 
 export const useEvents = () => useContext(EventsContext)
 
@@ -27,7 +56,7 @@ export const EventsProvider = ({ children }) => {
   const EVENT_STATUS = useMemo(
     () => ({
       PENDING: "Pendente",
-      DONE: "Concluído",
+      DONE: "ConcluÃ­do",
     }),
     [],
   )
@@ -37,7 +66,7 @@ export const EventsProvider = ({ children }) => {
     const base = {
       id: event.id || uuidv4(),
       title: event.title || event.titulo || "",
-      date: event.date || event.data || new Date().toISOString().split("T")[0],
+      date: event.date || event.data || toLocalISODate(),
       startTime: event.startTime || event.horaInicio || event.start || "",
       endTime: event.endTime || event.horaFim || event.end || "",
       location: event.location || event.local || "",
@@ -86,6 +115,27 @@ export const EventsProvider = ({ children }) => {
     }
   }, [normalizeEvent, scopeKey, scopedStorageKey])
 
+  // Sincroniza com o backend para que cuidador e idoso vejam os mesmos eventos
+  useEffect(() => {
+    if (!residentCpf) return undefined
+    let cancelled = false
+    const fetchRemote = async () => {
+      try {
+        const remote = await api.listEventos(residentCpf)
+        if (cancelled || !Array.isArray(remote)) return
+        setEventState({ scopeKey, events: remote.map((evt) => normalizeEvent(fromApi(evt))).filter(Boolean) })
+      } catch (error) {
+        console.warn("Falha ao sincronizar eventos com o servidor", error)
+      }
+    }
+    fetchRemote()
+    const interval = setInterval(fetchRemote, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [residentCpf, scopeKey, normalizeEvent])
+
   useEffect(() => {
     if (typeof window === "undefined") return undefined
 
@@ -130,11 +180,29 @@ export const EventsProvider = ({ children }) => {
     })
 
     setScopedEvents((previous) => [...previous, newEvent])
+    if (residentCpf) {
+      api.createEvento(residentCpf, toApi(newEvent))
+        .then((saved) => {
+          if (!saved?.id) return
+          setScopedEvents((previous) => previous.map((event) => (event.id === newEvent.id ? { ...event, id: saved.id } : event)))
+        })
+        .catch((error) => {
+          setScopedEvents((previous) => previous.filter((event) => event.id !== newEvent.id))
+          showError(error?.message || "NÃ£o foi possÃ­vel salvar o evento no servidor.")
+        })
+    }
     showSuccess(`Evento "${title}" adicionado com sucesso!`)
     return newEvent
   }
 
   const updateEvent = (id, updatedEvent) => {
+    const current = events.find((event) => event.id === id)
+    if (residentCpf && current && typeof id === "number") {
+      const merged = normalizeEvent({ ...current, ...updatedEvent, id, status: updatedEvent.status || current.status })
+      api.updateEvento(id, toApi(merged)).catch((error) => {
+        showError(error?.message || "NÃ£o foi possÃ­vel atualizar o evento no servidor.")
+      })
+    }
     setScopedEvents((previous) =>
       previous.map((event) => {
         if (event.id === id) {
@@ -154,12 +222,24 @@ export const EventsProvider = ({ children }) => {
   const deleteEvent = (id) => {
     const eventToDelete = events.find((event) => event.id === id)
     setScopedEvents((previous) => previous.filter((event) => event.id !== id))
+    if (residentCpf && typeof id === "number") {
+      api.deleteEvento(id).catch((error) => {
+        showError(error?.message || "NÃ£o foi possÃ­vel remover o evento no servidor.")
+      })
+    }
     if (eventToDelete) {
       showSuccess(`Evento "${eventToDelete.title}" removido com sucesso!`)
     }
   }
 
   const toggleEventStatus = (id) => {
+    const target = events.find((event) => event.id === id)
+    if (residentCpf && target && typeof id === "number") {
+      const next = target.status === EVENT_STATUS.DONE ? EVENT_STATUS.PENDING : EVENT_STATUS.DONE
+      api.atualizarStatusEvento(id, toApiStatus(next)).catch((error) => {
+        showError(error?.message || "NÃ£o foi possÃ­vel atualizar o status no servidor.")
+      })
+    }
     setScopedEvents((prev) =>
       prev.map((event) => {
         if (event.id !== id) return event
@@ -176,7 +256,7 @@ export const EventsProvider = ({ children }) => {
   }
 
   const getTodayEvents = () => {
-    const today = new Date().toISOString().split("T")[0]
+    const today = toLocalISODate()
     return events
       .filter((event) => event.date === today)
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -196,7 +276,7 @@ export const EventsProvider = ({ children }) => {
         if (a.date !== b.date) {
           return a.date.localeCompare(b.date)
         }
-        // Se a data for a mesma, ordenar por hora de início
+        // Se a data for a mesma, ordenar por hora de inÃ­cio
         return a.startTime.localeCompare(b.startTime)
       })
   }
@@ -205,11 +285,11 @@ export const EventsProvider = ({ children }) => {
     return events.filter((event) => event.category === category).sort((a, b) => new Date(a.date) - new Date(b.date))
   }
 
-  // Função para importar eventos de CSV
+  // FunÃ§Ã£o para importar eventos de CSV
   const importEventsFromCSV = (csvData) => {
     try {
       if (!csvData || !Array.isArray(csvData) || csvData.length === 0) {
-        showError("Dados CSV inválidos ou vazios")
+        showError("Dados CSV invÃ¡lidos ou vazios")
         return []
       }
 
@@ -218,7 +298,7 @@ export const EventsProvider = ({ children }) => {
         normalizeEvent({
           id: uuidv4(),
           title: item.titulo || item.title || "",
-          date: item.data || item.date || new Date().toISOString().split("T")[0],
+          date: item.data || item.date || toLocalISODate(),
           startTime: item.horaInicio || item.startTime || "",
           endTime: item.horaFim || item.endTime || "",
           location: item.local || item.location || "",
@@ -234,7 +314,7 @@ export const EventsProvider = ({ children }) => {
       const validEvents = newEvents.filter((event) => event.title && event.date && event.startTime)
 
       if (validEvents.length === 0) {
-        showError("Nenhum evento válido encontrado no arquivo CSV")
+        showError("Nenhum evento vÃ¡lido encontrado no arquivo CSV")
         return []
       }
 
