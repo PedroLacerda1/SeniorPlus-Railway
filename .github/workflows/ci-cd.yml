@@ -7,6 +7,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   JAVA_VERSION: '21'
   NODE_VERSION: '20'
@@ -30,22 +34,11 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
 
-      - name: Cache Maven
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
-          restore-keys: m2-${{ runner.os }}-
-
-      - name: Run JUnit tests
-        run: mvn -pl ${BACKEND_DIR} -am test
-
-      - name: Run integration tests (Spring Boot Test + Testcontainers)
-        run: mvn -pl ${BACKEND_DIR} -am verify -DskipITs=false
-
-      - name: Build backend
-        run: mvn -pl ${BACKEND_DIR} -am package -DskipTests=true
+      # verify já executa os testes unitários, os de integração e o package
+      - name: Tests (unit + integration) and build
+        run: mvn -B -ntp -pl ${BACKEND_DIR} -am verify -DskipITs=false
 
 
   # ======================================================
@@ -109,7 +102,7 @@ jobs:
   security:
     name: Segurança · Dependency Scan + JWT Check
     runs-on: ubuntu-latest
-    needs: [ backend, frontend ]
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
@@ -119,6 +112,15 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      # Base do NVD (~350 mil CVEs): sem cache, cada execução baixa tudo (20+ min)
+      - name: Cache OWASP NVD data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: odc-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: odc-${{ runner.os }}-
 
       - name: Install Node
         uses: actions/setup-node@v4
