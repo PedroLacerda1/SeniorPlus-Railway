@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 pushd "$ROOT_DIR" >/dev/null
 
-OWASP_DC_VERSION="${OWASP_DC_VERSION:-12.1.0}"
+OWASP_DC_VERSION="${OWASP_DC_VERSION:-12.2.2}"
 # Use bash explicitly so CI doesn't need the mvnw executable bit set
 DC_ARGS=("org.owasp:dependency-check-maven:${OWASP_DC_VERSION}:check" -DskipTests=true)
 if [[ -n "${NVD_API_KEY:-}" ]]; then
