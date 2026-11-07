@@ -1,0 +1,12 @@
+[variables]
+NIXPACKS_JAVA_VERSION = "17"
+
+[phases.build]
+dependsOn = ['install']
+cmds = [
+    'chmod +x build.sh',
+    './build.sh'
+]
+
+[phases.start]
+cmd = 'chmod +x start.sh && ./start.sh'
