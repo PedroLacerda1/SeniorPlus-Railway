@@ -14,7 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,6 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -61,6 +66,51 @@ class SeniorplusApplicationTests {
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.components.db.status").value("UP"));
     }
+
+        @Test
+        void azureFrontendCanReachRegistrationButOtherOriginsAreRejected() throws Exception {
+        String origin = "https://icy-rock-0cc47c010.5.azurestaticapps.net";
+        mockMvc.perform(options("/api/v1/auth/register")
+                .header("Origin", origin)
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", origin));
+        mockMvc.perform(post("/api/v1/auth/register")
+                .header("Origin", origin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(header().string("Access-Control-Allow-Origin", origin));
+        mockMvc.perform(post("/api/v1/auth/register")
+                .header("Origin", "https://untrusted.example")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @Transactional
+        void registrationAndLoginWorkFromAzureOrigin() throws Exception {
+        String origin = "https://icy-rock-0cc47c010.5.azurestaticapps.net";
+        String registration = "{\"nome\":\"QA\",\"cpf\":\"98765432109\",\"email\":\"qa@example.invalid\",\"senha\":\"test-password\",\"tipoUsuario\":\"Cuidador\"}";
+        mockMvc.perform(post("/api/v1/auth/register").header("Origin", origin)
+                .contentType(MediaType.APPLICATION_JSON).content(registration))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token").isNotEmpty());
+        mockMvc.perform(post("/api/v1/auth/register").header("Origin", origin)
+                .contentType(MediaType.APPLICATION_JSON).content(registration))
+            .andExpect(status().isConflict());
+        mockMvc.perform(post("/api/v1/auth/login").header("Origin", origin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"qa@example.invalid\",\"senha\":\"test-password\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token").isNotEmpty());
+        mockMvc.perform(post("/api/v1/auth/login").header("Origin", origin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"qa@example.invalid\",\"senha\":\"wrong-password\"}"))
+            .andExpect(status().isUnauthorized());
+        }
 
     @Test
     void chatMensagemPodeSerEnviadaEListadaPeloCpfDoIdoso() {

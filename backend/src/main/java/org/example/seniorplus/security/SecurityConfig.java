@@ -82,6 +82,7 @@ public class SecurityConfig {
         configuration.addAllowedOriginPattern("http://127.0.0.1:*");
         configuration.addAllowedOrigin("https://seniorplus.up.railway.app");
         configuration.addAllowedOrigin("https://seniorplus-backend.up.railway.app");
+        configuration.addAllowedOrigin("https://icy-rock-0cc47c010.5.azurestaticapps.net");
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
         configuration.setMaxAge(3600L);
