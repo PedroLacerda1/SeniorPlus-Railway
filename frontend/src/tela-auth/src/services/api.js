@@ -403,7 +403,7 @@ export const api = {
       const token =
         authToken || localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
       const headers = token && shouldAttachAuthHeader(endpoint)
-        ? { Authorization: `****** }
+        ? { Authorization: `Bearer ${token}` }
         : {}
       const url = isRelativeProxy ? `${endpoint}` : `${API_URL}${endpoint}`
       const response = await fetch(url, {
