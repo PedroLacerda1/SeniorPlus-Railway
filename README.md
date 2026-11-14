@@ -159,6 +159,13 @@ Local: `/tests`
 - **Railway** (`railway.json`)
 - **Nixpacks** (`nixpacks.toml`)
 
+### 🛡️ Área administrativa
+- Acesse `/admin` com uma conta `ROLE_ADMIN`. A API também protege `/api/v1/admin/**`; esconder a rota na interface não é a barreira de segurança.
+- O bootstrap opcional cria o primeiro administrador quando `ADMIN_BOOTSTRAP_PASSWORD` estiver configurada e ainda não existir nenhuma conta administrativa. O e-mail padrão é `adm@seniorplus.com`; pode ser sobrescrito por `ADMIN_BOOTSTRAP_EMAIL`.
+- Configure `ADMIN_BOOTSTRAP_PASSWORD` como variável secreta no serviço backend do Railway ou no `.env` local (não a grave no Git). O valor precisa ter pelo menos 12 caracteres. Opcionalmente, defina `ADMIN_BOOTSTRAP_NAME`.
+- Depois do primeiro boot, remova a variável `ADMIN_BOOTSTRAP_PASSWORD` do ambiente. O bootstrap não altera contas existentes nem cria outro administrador se já houver um.
+- Usuários comuns podem ser desativados pelo painel para preservar dados de saúde e vínculos; contas desativadas não conseguem autenticar.
+
 ### 📜 Scripts do projeto
 - `build.sh`
 - `start.sh`

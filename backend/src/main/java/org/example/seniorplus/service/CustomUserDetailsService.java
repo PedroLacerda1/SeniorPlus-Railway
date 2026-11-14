@@ -28,10 +28,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 new SimpleGrantedAuthority(usuario.getRole().name())
         );
 
-        return new User(
-                usuario.getEmail(),
-                usuario.getSenha(),
-                authorities
-        );
+        return User.withUsername(usuario.getEmail())
+                .password(usuario.getSenha())
+                .authorities(authorities)
+                .disabled(!usuario.isEnabled())
+                .build();
     }
 }

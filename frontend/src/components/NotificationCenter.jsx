@@ -239,10 +239,18 @@ function NotificationCenter() {
 
           {permission !== "granted" && (
             <div className="notification-permission">
-              <p>Ative as notificações para receber alertas importantes.</p>
-              <button className="notification-permission-button" onClick={handleRequestPermission}>
-                Ativar notificações
-              </button>
+              <p>
+                {permission === "unsupported"
+                  ? "Este navegador não oferece notificações do sistema."
+                  : permission === "denied"
+                    ? "As notificações estão bloqueadas. Altere a permissão nas configurações do navegador."
+                    : "Ative as notificações para receber alertas enquanto o site estiver aberto."}
+              </p>
+              {permission === "default" && (
+                <button className="notification-permission-button" onClick={handleRequestPermission}>
+                  Ativar notificações
+                </button>
+              )}
             </div>
           )}
 

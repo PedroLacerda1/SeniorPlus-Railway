@@ -56,6 +56,9 @@ public class Medicamento extends BaseEntity {
 
     private int intervaloMinutos;
 
+    @Column(nullable = false, length = 20)
+    private String status = "active";
+
 
     public Medicamento() {
     }
@@ -214,6 +217,14 @@ public class Medicamento extends BaseEntity {
 
     public void setNotificarPorSms(boolean notificarPorSms) {
         this.notificarPorSms = notificarPorSms;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
 

@@ -130,6 +130,10 @@ public class AuthController {
             Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário ou senha inválidos"));
 
+            if (!usuario.isEnabled()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esta conta está desativada. Entre em contato com o suporte.");
+            }
+
             if (!passwordEncoder.matches(request.getSenha(), usuario.getSenha())) {
                 log.info("Login rejected because password did not match for email={}", request.getEmail());
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário ou senha inválidos");

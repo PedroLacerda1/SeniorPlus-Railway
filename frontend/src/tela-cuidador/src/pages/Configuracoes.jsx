@@ -6,6 +6,7 @@ import "../styles/Configuracoes.css"
 import BackButton from "../../../components/BackButton"
 import { useCaregiverProfile } from "../contexts/CaregiverProfileContext"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
+import { getReminderPrefs, reminderPrefsScope, saveReminderPrefs } from "../../../utils/reminderPrefs"
 
 function Configuracoes() {
   const { darkMode, toggleDarkMode } = useTheme()
@@ -13,12 +14,20 @@ function Configuracoes() {
   const { showSuccess, showError } = useToast()
   const { caregiverProfile, updateCaregiverProfile, resetCaregiverProfile } = useCaregiverProfile()
   const { currentUser } = useAuth()
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const [reminderTime, setReminderTime] = useState("30")
+  const reminderPrefsKey = reminderPrefsScope(currentUser)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => getReminderPrefs(reminderPrefsKey).notificationsEnabled)
+  const [soundEnabled, setSoundEnabled] = useState(() => getReminderPrefs(reminderPrefsKey).soundEnabled)
+  const [reminderTime, setReminderTime] = useState(() => String(getReminderPrefs(reminderPrefsKey).reminderMinutes))
   const [language, setLanguage] = useState("pt-BR")
   const [fontSize, setFontSize] = useState("medium")
   const [savingProfile, setSavingProfile] = useState(false)
+
+  useEffect(() => {
+    const reminderPrefs = getReminderPrefs(reminderPrefsKey)
+    setNotificationsEnabled(reminderPrefs.notificationsEnabled)
+    setSoundEnabled(reminderPrefs.soundEnabled)
+    setReminderTime(String(reminderPrefs.reminderMinutes))
+  }, [reminderPrefsKey])
 
   const [caregiverForm, setCaregiverForm] = useState(() => ({
     displayName:
@@ -199,7 +208,17 @@ function Configuracoes() {
   }
 
   const handleSaveSettings = () => {
-    showSuccess("Configurações salvas com sucesso!")
+    try {
+      saveReminderPrefs({
+        notificationsEnabled,
+        soundEnabled,
+        reminderMinutes: Number(reminderTime) || 30,
+      }, reminderPrefsKey)
+      showSuccess("Preferências de notificação salvas neste dispositivo.")
+    } catch (error) {
+      console.error("Erro ao salvar preferências de notificação", error)
+      showError?.("Não foi possível salvar as preferências de notificação.")
+    }
   }
 
   const handleClearData = () => {
@@ -714,7 +733,7 @@ function Configuracoes() {
 
           <div className="settings-actions">
             <button className="settings-button" onClick={handleSaveSettings}>
-              Salvar Configurações
+              Salvar Preferências de Notificação
             </button>
           </div>
         </div>

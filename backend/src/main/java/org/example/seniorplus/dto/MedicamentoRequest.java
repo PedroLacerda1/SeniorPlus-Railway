@@ -23,4 +23,5 @@ public class MedicamentoRequest {
     private boolean notificarPorEmail;
     private boolean notificarPorApp;
     private boolean notificarPorSms;
+    private String status;
 }

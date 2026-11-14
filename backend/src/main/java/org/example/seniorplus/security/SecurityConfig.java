@@ -37,6 +37,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/api/v1/public/**").permitAll()
                     .requestMatchers("/api/v1/reset-senha/**").permitAll()
+                    .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                     // Rotas públicas necessárias para o Swagger funcionar
                     .requestMatchers(

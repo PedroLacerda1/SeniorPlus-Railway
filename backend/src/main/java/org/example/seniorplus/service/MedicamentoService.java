@@ -43,6 +43,7 @@ public class MedicamentoService {
         existente.setNotificarPorEmail(atualizado.isNotificarPorEmail());
         existente.setNotificarPorApp(atualizado.isNotificarPorApp());
         existente.setNotificarPorSms(atualizado.isNotificarPorSms());
+        existente.setStatus(atualizado.getStatus());
         existente.setIntervaloMinutos(atualizado.getIntervaloMinutos());
         existente.setHorarios(atualizado.getHorarios());
 

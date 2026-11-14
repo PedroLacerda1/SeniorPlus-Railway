@@ -48,10 +48,12 @@ function Login() {
       
       // Redirecionar com base na role do usuário
       const role = user.role || user?.role
-      if (role === "ROLE_CUIDADOR" || role === "caregiver") {
-  navigate("/tela-cuidador", { replace: true })
+      if (role === "ROLE_ADMIN" || role === "admin") {
+        navigate("/admin", { replace: true })
+      } else if (role === "ROLE_CUIDADOR" || role === "caregiver") {
+        navigate("/tela-cuidador", { replace: true })
       } else if (role === "ROLE_IDOSO" || role === "elderly") {
-  navigate("/tela-idoso", { replace: true })
+        navigate("/tela-idoso", { replace: true })
       } else {
         // fallback para a rota anterior ou cuidador
         navigate(from || "/tela-cuidador", { replace: true })

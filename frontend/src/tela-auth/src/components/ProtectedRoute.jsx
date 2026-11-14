@@ -3,7 +3,7 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, allowedRoles }) {
   const { currentUser, loading } = useAuth()
   const location = useLocation()
 
@@ -40,6 +40,15 @@ function ProtectedRoute({ children }) {
   // Se não estiver logado, redireciona para login salvando a localização atual
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  if (allowedRoles?.length && !allowedRoles.includes(currentUser.role)) {
+    const roleHome = {
+      admin: "/admin",
+      caregiver: "/tela-cuidador",
+      elderly: "/tela-idoso",
+    }
+    return <Navigate to={roleHome[currentUser.role] || "/login"} replace />
   }
 
   // Se estiver logado, renderiza o componente

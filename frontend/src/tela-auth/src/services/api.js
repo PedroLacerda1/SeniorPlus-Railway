@@ -201,6 +201,13 @@ export const api = {
     return api.delete(`/api/v1/medicamentos/${medicamentoId}`);
   },
 
+  listAdminUsers: async () => api.get("/api/v1/admin/users"),
+  createAdminUser: async (payload) => api.post("/api/v1/admin/users", payload),
+  updateAdminUser: async (id, payload) => api.put(`/api/v1/admin/users/${id}`, payload),
+  updateAdminUserStatus: async (id, ativo) =>
+    api.patch(`/api/v1/admin/users/${id}/status`, { ativo }),
+  listAdminLinks: async () => api.get("/api/v1/admin/links"),
+
   // Endpoints para Contatos de Emergência
   listEmergencyContacts: async (idosoCpf) => {
     return api.get(`/api/v1/idosos/${idosoCpf}/contatos-emergencia`);
@@ -387,6 +394,33 @@ export const api = {
           console.error("simulateResponse também falhou:", e)
         }
       }
+      throw error
+    }
+  },
+
+  patch: async (endpoint, data) => {
+    try {
+      const token =
+        authToken || localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
+      const headers = token && shouldAttachAuthHeader(endpoint)
+        ? { Authorization: `****** }
+        : {}
+      const url = isRelativeProxy ? `${endpoint}` : `${API_URL}${endpoint}`
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw await buildApiError(response)
+      }
+      return await parseJsonBody(response)
+    } catch (error) {
+      console.warn("Erro na requisição PATCH", error)
       throw error
     }
   },

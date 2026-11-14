@@ -32,6 +32,20 @@
     </properties>
     <dependencies>
         <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
+            <version>12.28.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-queue</artifactId>
+            <version>12.23.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
@@ -152,8 +166,8 @@
             <artifactId>flyway-maven-plugin</artifactId>
             <version>11.7.2</version>
             <configuration>
-                <url>jdbc:mysql://hopper.proxy.rlwy.net:20356/railway</url>
-                <user>root</user>
+                <url>${env.SPRING_DATASOURCE_URL}</url>
+                <user>${env.SPRING_DATASOURCE_USERNAME}</user>
                 <password>${env.SPRING_DATASOURCE_PASSWORD}</password>
             </configuration>
         </plugin>

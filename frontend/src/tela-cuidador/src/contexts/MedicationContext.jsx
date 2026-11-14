@@ -26,6 +26,8 @@ const fromApi = (medication) => ({
   times: (medication.horarios || []).map((t) => String(t).slice(0, 5)),
   startDate: medication.dataInicio,
   endDate: medication.dataFim || "",
+  status: medication.status || "active",
+  reminders: medication.notificarPorApp !== false,
   instructions: medication.instrucoes,
 })
 
@@ -37,11 +39,12 @@ const toApi = (medication, userName) => ({
   dataInicio: medication.startDate,
   dataFim: medication.endDate || null,
   horarios: (medication.times || []).filter((t) => timePattern.test(t)),
+  status: medication.status || "active",
   repetirDiariamente: true,
   intervaloHoras: 0,
   intervaloMinutos: 0,
   nomeUsuario: userName || "Idoso",
-  notificarPorApp: true,
+  notificarPorApp: medication.reminders !== false,
 })
 
 export const useMedication = () => useContext(MedicationContext)
@@ -199,7 +202,18 @@ export const MedicationProvider = ({ children }) => {
     }
   }, [historyState, historyStorageKey, scopeKey])
 
-  const addMedication = (name, dosage, frequency, time, startDate, endDate, instructions, notes = "") => {
+  const addMedication = (
+    name,
+    dosage,
+    frequency,
+    time,
+    startDate,
+    endDate,
+    instructions,
+    notes = "",
+    reminders = true,
+    status = "active",
+  ) => {
     const newMedication = normalizeMedication({
       id: uuidv4(),
       name,
@@ -208,9 +222,9 @@ export const MedicationProvider = ({ children }) => {
       time,
       startDate,
       endDate,
-      status: "active",
+      status,
       instructions,
-      reminders: true,
+      reminders,
       notes,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

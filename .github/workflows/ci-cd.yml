@@ -173,7 +173,7 @@ jobs:
       - name: Backend Health Check
         run: |
           echo "Checking backend health endpoint..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$BACKEND_BASE_URL/health")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$BACKEND_BASE_URL/actuator/health")
           if [ "$STATUS" -ne 200 ]; then
             echo "❌ Backend health endpoint failed with status $STATUS"
             exit 1

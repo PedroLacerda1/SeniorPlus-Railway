@@ -64,6 +64,9 @@ public class MedicamentoController {
         medicamento.setNotificarPorEmail(request.isNotificarPorEmail());
         medicamento.setNotificarPorApp(request.isNotificarPorApp());
         medicamento.setNotificarPorSms(request.isNotificarPorSms());
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            medicamento.setStatus(request.getStatus());
+        }
         return medicamento;
     }
 }

@@ -20,7 +20,7 @@ public class PublicController {
         return ResponseEntity.ok(payload);
     }
 
-    @GetMapping({"/health", "/actuator/health"})
+    @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> payload = new HashMap<>();
         payload.put("status", "UP");

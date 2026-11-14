@@ -37,6 +37,7 @@ import Relatorios from "./tela-cuidador/src/pages/Relatorios";
 import Calendario from "./tela-cuidador/src/pages/Calendario";
 import Configuracoes from "./tela-cuidador/src/pages/Configuracoes";
 import Emergencia from "./tela-cuidador/src/pages/Emergencia";
+import AdminDashboard from "./pages/AdminDashboard";
 
 import "./global.css";
 import RootErrorBoundary from "./components/RootErrorBoundary";
@@ -84,9 +85,17 @@ function AppContent() {
                   <Route path="/resetar-senha" element={<ResetPassword />} />
                   <Route path="/" element={<Landing />} />
                   <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute allowedRoles={["admin"]}>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/tela-cuidador"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <Home />
                         </CaregiverLayout>
@@ -96,7 +105,7 @@ function AppContent() {
                   <Route
                     path="/atualizar-dados"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <AtualizarDados />
                         </CaregiverLayout>
@@ -106,7 +115,7 @@ function AppContent() {
                   <Route
                     path="/medicamentos"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <Medicamentos />
                         </CaregiverLayout>
@@ -116,7 +125,7 @@ function AppContent() {
                   <Route
                     path="/registrar-eventos"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <RegistrarEventos />
                         </CaregiverLayout>
@@ -126,7 +135,7 @@ function AppContent() {
                   <Route
                     path="/relatorios"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <Relatorios />
                         </CaregiverLayout>
@@ -136,7 +145,7 @@ function AppContent() {
                   <Route
                     path="/calendario"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <Calendario />
                         </CaregiverLayout>
@@ -146,7 +155,7 @@ function AppContent() {
                   <Route
                     path="/configuracoes"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <Configuracoes />
                         </CaregiverLayout>
@@ -156,7 +165,7 @@ function AppContent() {
                   <Route
                     path="/emergencia"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["caregiver"]}>
                         <CaregiverLayout>
                           <Emergencia />
                         </CaregiverLayout>
@@ -166,7 +175,7 @@ function AppContent() {
                   <Route
                     path="/tela-idoso/*"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute allowedRoles={["elderly"]}>
                         <TelaIdosoApp />
                       </ProtectedRoute>
                     }

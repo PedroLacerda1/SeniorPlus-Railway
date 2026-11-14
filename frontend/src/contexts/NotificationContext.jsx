@@ -5,8 +5,8 @@ import { emitEmergencyNotification } from "../utils/emergency"
 import { useToast } from "./ToastContext"
 import { useAuth } from "../tela-auth/src/contexts/AuthContext"
 import { useUser } from "../tela-cuidador/src/contexts/UserContext"
-import { toLocalISODate } from "../utils/date"
-import { getReminderPrefs } from "../utils/reminderPrefs"
+import { parseLocalDate, toLocalISODate } from "../utils/date"
+import { getReminderPrefs, reminderPrefsScope } from "../utils/reminderPrefs"
 
 const NotificationContext = createContext()
 
@@ -22,6 +22,7 @@ export const NotificationProvider = ({ children }) => {
     ? `cpf:${residentCpf}`
     : currentUser?.id || currentUser?.email || currentUser?.username || null
   const storageKey = currentUser && ownerKey ? `notifications:${ownerKey}` : null
+  const reminderScope = reminderPrefsScope(currentUser)
 
   const [notificationState, setNotificationState] = useState({ storageKey: null, items: [] })
   const notifications = useMemo(
@@ -82,6 +83,8 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if ("Notification" in window) {
       setPermission(Notification.permission)
+    } else {
+      setPermission("unsupported")
     }
   }, [])
 
@@ -98,7 +101,7 @@ export const NotificationProvider = ({ children }) => {
 
       const ctx = audioContextRef.current
       if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {})
+        ctx.resume().catch((error) => console.warn("Não foi possível ativar o áudio de notificações", error))
       }
 
       const now = Date.now()
@@ -139,7 +142,7 @@ export const NotificationProvider = ({ children }) => {
     const interval = setInterval(() => {
       reminderChecksRef.current.checkMedicationReminders?.()
       reminderChecksRef.current.checkEventReminders?.()
-    }, 60000) // Verificar a cada minuto
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [medications, events, notifications])
@@ -177,6 +180,7 @@ export const NotificationProvider = ({ children }) => {
       return 'granted'
     }
     if (Notification.permission === 'denied') {
+      setPermission("denied")
       return 'denied'
     }
     try {
@@ -187,6 +191,7 @@ export const NotificationProvider = ({ children }) => {
       } else if (permission === 'denied') {
         if (showError) showError('Permissão negada para notificações.')
       }
+      setPermission(permission)
       return permission
     } catch (e) {
       console.warn('Falha ao solicitar permissão de notificação', e)
@@ -197,18 +202,18 @@ export const NotificationProvider = ({ children }) => {
   // Verificar medicamentos para lembretes
   const checkMedicationReminders = () => {
     if (!medications || medications.length === 0) return
-    if (!getReminderPrefs().notificationsEnabled) return
+    const prefs = getReminderPrefs(reminderScope)
+    if (!prefs.notificationsEnabled) return
 
     const now = new Date()
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-    const currentTime = `${currentHour.toString().padStart(2, "0")}:${currentMinute.toString().padStart(2, "0")}`
     const todayISO = toLocalISODate(now)
 
     purgeObsoleteLocks(todayISO)
 
     medications.forEach((medication) => {
-      if (medication.status !== "active") return
+      if (medication.status !== "active" || medication.reminders === false) return
+      if (medication.startDate && medication.startDate > todayISO) return
+      if (medication.endDate && medication.endDate < todayISO) return
 
       const timeSlots = Array.isArray(medication.times) ? medication.times : String(medication.time || "")
         .split(",")
@@ -216,7 +221,12 @@ export const NotificationProvider = ({ children }) => {
         .filter(Boolean)
 
       timeSlots.forEach((timeSlot) => {
-        if (timeSlot !== currentTime) return
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeSlot)) return
+        const [slotHour, slotMinute] = timeSlot.split(":").map(Number)
+        const scheduledAt = new Date(now)
+        scheduledAt.setHours(slotHour, slotMinute, 0, 0)
+        const minutesLate = (now.getTime() - scheduledAt.getTime()) / 60000
+        if (minutesLate < 0 || minutesLate > 5) return
 
         const notificationKey = JSON.stringify({
           type: "medication",
@@ -231,7 +241,8 @@ export const NotificationProvider = ({ children }) => {
             notification.type === "medication" &&
             notification.data?.medicationId === medication.id &&
             notification.data?.scheduleTime === timeSlot &&
-            isSameDay(new Date(notification.time), now),
+            (notification.data?.scheduledDate === todayISO ||
+              (!notification.data?.scheduledDate && isSameDay(new Date(notification.time), now))),
         )
 
         if (alreadyExists) {
@@ -250,17 +261,18 @@ export const NotificationProvider = ({ children }) => {
             medicationId: medication.id,
             medicationName: medication.name,
             scheduleTime: timeSlot,
+            scheduledDate: todayISO,
           },
         }
 
         // Adicionar à lista de notificações
         addNotification(notification)
-        if (getReminderPrefs().soundEnabled) playNotificationSound()
+        if (prefs.soundEnabled && permission !== "granted") playNotificationSound()
         notificationLockRef.current.add(notificationKey)
 
         // Enviar notificação do navegador se permitido
         if (permission === "granted") {
-          sendBrowserNotification(notification.title, notification.message)
+          sendBrowserNotification(notification.title, notification.message, { silent: !prefs.soundEnabled })
         }
       })
     })
@@ -275,7 +287,7 @@ export const NotificationProvider = ({ children }) => {
 
   const checkEventReminders = () => {
     if (!events || events.length === 0) return
-    const prefs = getReminderPrefs()
+    const prefs = getReminderPrefs(reminderScope)
     if (!prefs.notificationsEnabled) return
     const lead = prefs.reminderMinutes
 
@@ -284,17 +296,19 @@ export const NotificationProvider = ({ children }) => {
     purgeObsoleteLocks(today)
 
     events.forEach((event) => {
+      if (String(event.status || "").toLowerCase().startsWith("conclu")) return
       const eventTime = event.startTime || "00:00"
       const [eventHour, eventMinute] = eventTime.split(":").map(Number)
+      if (!Number.isInteger(eventHour) || !Number.isInteger(eventMinute)) return
 
-      // Calcular tempo para o evento (em minutos)
-      const eventDate = new Date(event.date)
+      const eventDate = parseLocalDate(event.date)
+      if (Number.isNaN(eventDate.getTime())) return
       eventDate.setHours(eventHour, eventMinute, 0, 0)
 
       const timeDiff = (eventDate.getTime() - now.getTime()) / (1000 * 60)
 
       // Notificar com a antecedência escolhida nas preferências
-      if (timeDiff > lead - 1 && timeDiff < lead + 1) {
+      if (timeDiff <= lead && timeDiff >= lead - 5) {
         const notificationKey = JSON.stringify({
           type: "event",
           target: event.id,
@@ -308,7 +322,7 @@ export const NotificationProvider = ({ children }) => {
             notification.type === "event" &&
             notification.data?.eventId === event.id &&
             notification.data?.eventTitle === event.title &&
-            isSameDay(new Date(notification.time), now),
+            notification.data?.scheduledDate === event.date,
         )
 
         if (alreadyExists) {
@@ -328,24 +342,25 @@ export const NotificationProvider = ({ children }) => {
             eventId: event.id,
             eventTitle: event.title,
             scheduleTime: event.startTime,
+            scheduledDate: event.date,
           },
         }
 
         // Adicionar à lista de notificações
         addNotification(notification)
-        if (prefs.soundEnabled) playNotificationSound()
+        if (prefs.soundEnabled && permission !== "granted") playNotificationSound()
         notificationLockRef.current.add(notificationKey)
 
         // Enviar notificação do navegador se permitido
         if (permission === "granted") {
-          sendBrowserNotification(notification.title, notification.message)
+          sendBrowserNotification(notification.title, notification.message, { silent: !prefs.soundEnabled })
         }
       }
     })
   }
 
   // Enviar notificação do navegador
-  const sendBrowserNotification = (title, message) => {
+  const sendBrowserNotification = (title, message, options = {}) => {
     if (!("Notification" in window) || Notification.permission !== "granted") {
       return
     }
@@ -354,7 +369,7 @@ export const NotificationProvider = ({ children }) => {
       new Notification(title, {
         body: message,
         icon: "/logo.png",
-        silent: false,
+        silent: options.silent ?? false,
       })
     } catch (error) {
       console.error("Erro ao enviar notificação:", error)
@@ -370,8 +385,22 @@ export const NotificationProvider = ({ children }) => {
   const notifyEmergencyAction = useCallback(
     (payload) => {
       emitEmergencyNotification({ ...payload, addNotification })
+      const prefs = getReminderPrefs(reminderScope)
+      if (prefs.notificationsEnabled) {
+        const title = payload.title || "Emergência"
+        const contactName = payload.contact?.name || "contato de emergência"
+        const message = payload.action === "whatsapp"
+          ? `WhatsApp enviado para ${contactName}`
+          : payload.action === "ligacao"
+            ? `Ligação acionada para ${contactName}`
+            : `Ação de emergência com ${contactName}`
+        if (prefs.soundEnabled && permission !== "granted") playNotificationSound()
+        if (permission === "granted") {
+          sendBrowserNotification(title, message, { silent: !prefs.soundEnabled })
+        }
+      }
     },
-    [addNotification],
+    [addNotification, permission, playNotificationSound, reminderScope],
   )
 
   // Marcar notificação como lida
@@ -409,8 +438,9 @@ export const NotificationProvider = ({ children }) => {
 
     addNotification(notification)
 
-    if (permission === "granted") {
-      sendBrowserNotification(title, message)
+    const prefs = getReminderPrefs(reminderScope)
+    if (prefs.notificationsEnabled && permission === "granted") {
+      sendBrowserNotification(title, message, { silent: !prefs.soundEnabled })
     }
 
     return notification.id

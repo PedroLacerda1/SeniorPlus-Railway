@@ -68,6 +68,9 @@ function MedicationForm({ onSubmit, onCancel, initialData = null }) {
         formData.startDate,
         formData.endDate,
         formData.instructions,
+        formData.notes,
+        formData.reminders,
+        formData.status,
       )
     }
 

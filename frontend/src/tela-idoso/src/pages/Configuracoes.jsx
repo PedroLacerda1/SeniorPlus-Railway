@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useAccessibility } from "../../../contexts/AccessibilityContext";
 import { useToast } from "../../../contexts/ToastContext";
-import { getReminderPrefs, saveReminderPrefs } from "../../../utils/reminderPrefs";
+import { useAuth } from "../../../tela-auth/src/contexts/AuthContext";
+import { getReminderPrefs, reminderPrefsScope, saveReminderPrefs } from "../../../utils/reminderPrefs";
 import "../styles/Configuracoes.css";
 
 function ConfiguracoesIdoso() {
@@ -18,11 +19,13 @@ function ConfiguracoesIdoso() {
     toggleReducedMotion,
     toggleReadingMode,
   } = useAccessibility();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
+  const { currentUser } = useAuth();
+  const prefsScope = reminderPrefsScope(currentUser);
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => getReminderPrefs().notificationsEnabled);
-  const [soundEnabled, setSoundEnabled] = useState(() => getReminderPrefs().soundEnabled);
-  const [reminderTime, setReminderTime] = useState(() => String(getReminderPrefs().reminderMinutes));
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => getReminderPrefs(prefsScope).notificationsEnabled);
+  const [soundEnabled, setSoundEnabled] = useState(() => getReminderPrefs(prefsScope).soundEnabled);
+  const [reminderTime, setReminderTime] = useState(() => String(getReminderPrefs(prefsScope).reminderMinutes));
   const [fontSizeOption, setFontSizeOption] = useState("medium");
 
   useEffect(() => {
@@ -33,6 +36,13 @@ function ConfiguracoesIdoso() {
     else setFontSizeOption("x-large");
   }, [prefs.fontScale]);
 
+  useEffect(() => {
+    const reminderPrefs = getReminderPrefs(prefsScope);
+    setNotificationsEnabled(reminderPrefs.notificationsEnabled);
+    setSoundEnabled(reminderPrefs.soundEnabled);
+    setReminderTime(String(reminderPrefs.reminderMinutes));
+  }, [prefsScope]);
+
   const handleFontPresetChange = (event) => {
     const value = event.target.value;
     setFontSizeOption(value);
@@ -41,13 +51,18 @@ function ConfiguracoesIdoso() {
   };
 
   const handleSave = () => {
-    saveReminderPrefs({
-      notificationsEnabled,
-      soundEnabled,
-      reminderMinutes: Number(reminderTime) || 30,
-    });
-    if (showSuccess) {
-      showSuccess("Preferências salvas com sucesso!");
+    try {
+      saveReminderPrefs({
+        notificationsEnabled,
+        soundEnabled,
+        reminderMinutes: Number(reminderTime) || 30,
+      }, prefsScope);
+      if (showSuccess) {
+        showSuccess("Preferências salvas com sucesso!");
+      }
+    } catch (error) {
+      console.error("Erro ao salvar preferências de lembrete", error);
+      showError?.("Não foi possível salvar as preferências neste dispositivo.");
     }
   };
 
