@@ -25,7 +25,10 @@ public class ResetSenhaService {
     @Transactional(rollbackFor = MessagingException.class)
     public void solicitarResetSenha(String email) throws MessagingException {
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new AuthenticationException("Usuário não encontrado"));
+                .orElse(null);
+        if (usuario == null) {
+            return;
+        }
 
         // Remove tokens antigos
         resetTokenRepository.deleteByUsuarioId(usuario.getId());

@@ -46,6 +46,10 @@ function ProfileCard() {
     async function fetchElderlyData() {
       try {
         const data = await api.get("/api/v1/idoso/informacoesIdoso");
+        if (!data) {
+          setElderlyData(null);
+          return;
+        }
         
 
         const finalAge = (() => {

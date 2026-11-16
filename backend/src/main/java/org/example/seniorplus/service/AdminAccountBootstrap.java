@@ -54,6 +54,9 @@ public class AdminAccountBootstrap implements ApplicationRunner {
             log.info("Admin bootstrap skipped: an administrator account already exists");
             return;
         }
+        if (password.length() < 12) {
+            throw new IllegalStateException("ADMIN_BOOTSTRAP_PASSWORD must contain at least 12 characters");
+        }
 
         Usuario admin = new Usuario();
         admin.setNome(name.isBlank() ? "Administrador SeniorPlus" : name);
