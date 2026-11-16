@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { Link, useNavigate } from "react-router-dom"
 import { useToast } from "../../../contexts/ToastContext"
@@ -16,6 +16,9 @@ function Register() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const termsDialogRef = useRef(null)
+  const termsTitleRef = useRef(null)
+  const termsTriggerRef = useRef(null)
   // NOVO ESTADO: Armazena a função (role) selecionada
   const [role, setRole] = useState("") // Pode ser 'ROLE_CUIDADOR' ou 'ROLE_IDOSO'
   const [showPassword, setShowPassword] = useState(false)
@@ -489,21 +492,28 @@ function Register() {
           {/* Fim das senhas */}
 
           <div className="auth-terms">
-            <details>
-              <summary>Leia os termos de uso (versão 1.0 - minuta)</summary>
-              <div className="auth-terms-content">
-                <p>O Senior+ é uma ferramenta de apoio à organização de cuidados, medicamentos, eventos e comunicação entre pessoas autorizadas. Não substitui profissionais de saúde, serviços de emergência ou orientação médica. Lembretes e mensagens podem falhar ou sofrer atrasos.</p>
-                <p>O usuário deve fornecer informações corretas, proteger suas credenciais e usar a plataforma somente para pessoas cujos dados esteja autorizado a tratar. Não compartilhe dados de saúde desnecessários. O vínculo com um cuidador depende das funcionalidades de autorização da plataforma.</p>
-                <p>Os dados informados são usados para operar as funcionalidades solicitadas. O tratamento de dados pessoais e de saúde, incluindo acesso, compartilhamento, retenção e solicitações dos titulares, deve seguir a legislação aplicável e a política de privacidade disponibilizada pelo responsável pela aplicação.</p>
-                <p>Em uma emergência, procure imediatamente os serviços de emergência competentes. Não dependa exclusivamente da plataforma para situações urgentes ou para a administração de medicamentos.</p>
-                <p>O responsável pela aplicação poderá comunicar mudanças nestes termos. Condições comerciais, canais de contato e política de privacidade devem ser informados antes da oferta ao público. Esta versão é uma minuta e deve ser revisada pelo responsável e por assessoria jurídica antes da produção.</p>
+            <div className="auth-terms-choice">
+              <input id="accept-terms" type="checkbox" checked={acceptTerms} onChange={(e) => {
+                setAcceptTerms(e.target.checked)
+                if (e.target.checked) setFieldErrors((previous) => ({ ...previous, terms: undefined }))
+              }} aria-invalid={Boolean(fieldErrors.terms)} aria-describedby={fieldErrors.terms ? "terms-error" : undefined} required />
+              <div>
+                <label htmlFor="accept-terms">Li e aceito os termos de uso.</label>
+                <button
+                  type="button"
+                  className="auth-terms-link"
+                  ref={termsTriggerRef}
+                  aria-haspopup="dialog"
+                  onClick={() => {
+                    termsDialogRef.current.showModal()
+                    termsTitleRef.current.focus()
+                  }}
+                >
+                  Ler termos de uso
+                </button>
               </div>
-            </details>
-            <label htmlFor="accept-terms">
-              <input id="accept-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required />
-              Li e aceito os termos de uso.
-            </label>
-            {fieldErrors.terms && <span className="auth-field-error">{fieldErrors.terms}</span>}
+            </div>
+            {fieldErrors.terms && <span id="terms-error" className="auth-field-error">{fieldErrors.terms}</span>}
           </div>
 
           <button type="submit" className="auth-button" disabled={isLoading}>
@@ -538,6 +548,38 @@ function Register() {
           </Link>
         </p>
       </div>
+      <dialog
+        ref={termsDialogRef}
+        className="auth-terms-dialog"
+        aria-labelledby="terms-title"
+        onClose={() => termsTriggerRef.current?.focus()}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault()
+            termsDialogRef.current.close()
+          }
+        }}
+      >
+        <div className="auth-terms-dialog-header">
+          <div>
+            <h2 id="terms-title" ref={termsTitleRef} tabIndex={-1}>Termos de uso</h2>
+            <p>Versão 1.0 - minuta</p>
+          </div>
+          <button type="button" className="auth-terms-close" aria-label="Fechar termos" onClick={() => termsDialogRef.current.close()}>
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div className="auth-terms-content">
+          <p>O Senior+ é uma ferramenta de apoio à organização de cuidados, medicamentos, eventos e comunicação entre pessoas autorizadas. Não substitui profissionais de saúde, serviços de emergência ou orientação médica. Lembretes e mensagens podem falhar ou sofrer atrasos.</p>
+          <p>O usuário deve fornecer informações corretas, proteger suas credenciais e usar a plataforma somente para pessoas cujos dados esteja autorizado a tratar. Não compartilhe dados de saúde desnecessários. O vínculo com um cuidador depende das funcionalidades de autorização da plataforma.</p>
+          <p>Os dados informados são usados para operar as funcionalidades solicitadas. O tratamento de dados pessoais e de saúde, incluindo acesso, compartilhamento, retenção e solicitações dos titulares, deve seguir a legislação aplicável e a política de privacidade disponibilizada pelo responsável pela aplicação.</p>
+          <p>Em uma emergência, procure imediatamente os serviços de emergência competentes. Não dependa exclusivamente da plataforma para situações urgentes ou para a administração de medicamentos.</p>
+          <p>O responsável pela aplicação poderá comunicar mudanças nestes termos. Condições comerciais, canais de contato e política de privacidade devem ser informados antes da oferta ao público. Esta versão é uma minuta e deve ser revisada pelo responsável e por assessoria jurídica antes da produção.</p>
+        </div>
+        <div className="auth-terms-dialog-footer">
+          <button type="button" className="auth-button" onClick={() => termsDialogRef.current.close()}>Voltar ao cadastro</button>
+        </div>
+      </dialog>
     </div>
   )
 }
