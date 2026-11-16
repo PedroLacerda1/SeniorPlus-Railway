@@ -149,13 +149,13 @@ const resolveResidentId = (sources = []) => {
 
 const normalizeCaregiverRecord = (entry) => {
   if (!entry || typeof entry !== "object") return null;
-  const nome = entry.nome || entry.name || entry.displayName;
+  const nome = entry.displayName || entry.nome || entry.name;
   if (!nome || !nome.toString().trim()) return null;
   return {
     nome: nome.toString().trim(),
     cpf: entry.cpf || entry.cuidadorCpf || entry.id || null,
-    email: entry.email || entry.mail || entry.contato || null,
-    telefone: entry.telefone || entry.phone || entry.celular || null,
+    email: entry.profileEmail || entry.email || entry.mail || entry.contato || null,
+    telefone: entry.profilePhone || entry.telefone || entry.phone || entry.celular || null,
     fotoUrl: entry.fotoUrl || entry.photoUrl || entry.avatarUrl || entry.foto || null,
   };
 };

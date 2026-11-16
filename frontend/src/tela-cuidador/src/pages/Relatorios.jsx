@@ -112,8 +112,8 @@ function Relatorios() {
   // Get dates between start and end date
   const getDatesInRange = (startDate, endDate) => {
     const dates = []
-    const currentDate = new Date(startDate)
-    const end = new Date(endDate)
+    const currentDate = parseLocalDate(startDate)
+    const end = parseLocalDate(endDate)
 
     while (currentDate <= end) {
       dates.push(toLocalISODate(new Date(currentDate)))
@@ -828,7 +828,7 @@ function Relatorios() {
           {user && (
             <div className="patient-info">
               <span className="patient-name">Paciente: {user.name}</span>
-              <span className="patient-age">Idade: {user.age} anos</span>
+              <span className="patient-age">Idade: {user.age != null ? `${user.age} anos` : "Não informada"}</span>
             </div>
           )}
         </div>

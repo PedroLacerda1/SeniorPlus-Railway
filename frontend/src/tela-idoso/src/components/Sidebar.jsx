@@ -2,6 +2,7 @@ import React from 'react'
 import { useAuth } from '../../../tela-auth/src/contexts/AuthContext'
 import { useUser } from '../../../tela-cuidador/src/contexts/UserContext'
 import { useResidentIdentity } from '../hooks/useResidentIdentity'
+import ProfileImage from '../../../components/ProfileImage'
 import '../styles/Sidebar.css'
 
 export default function Sidebar({ toggleSidebar, isOpen, variant = 'drawer', residentName, residentAvatar, residentInitials }) {
@@ -65,7 +66,7 @@ export default function Sidebar({ toggleSidebar, isOpen, variant = 'drawer', res
       <div className={`sidebar-profile${isDrawer ? ' sidebar-profile--compact' : ''}`} aria-label="Perfil do idoso">
         <div className="sidebar-profile__avatar" aria-hidden={!displayAvatar}>
           {displayAvatar ? (
-            <img
+            <ProfileImage
               src={displayAvatar}
               alt={`Foto de ${displayName}`}
               onError={(event) => {

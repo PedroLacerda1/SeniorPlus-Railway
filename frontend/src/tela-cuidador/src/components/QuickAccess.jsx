@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import "../styles/QuickAccess.css"
 import { useCaregiverProfile } from "../contexts/CaregiverProfileContext"
+import ProfileImage from "../../../components/ProfileImage"
 
 function QuickAccess() {
   const { caregiverProfile } = useCaregiverProfile()
@@ -15,7 +16,7 @@ function QuickAccess() {
       <div className="quick-access-caregiver-card">
         <div className="caregiver-card-avatar" aria-hidden={!avatarUrl}>
           {avatarUrl ? (
-            <img
+            <ProfileImage
               src={avatarUrl}
               alt={`Foto de ${displayName}`}
               onError={(event) => {

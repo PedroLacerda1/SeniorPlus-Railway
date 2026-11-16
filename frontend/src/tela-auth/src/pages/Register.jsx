@@ -15,6 +15,7 @@ function Register() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [acceptTerms, setAcceptTerms] = useState(false)
   // NOVO ESTADO: Armazena a função (role) selecionada
   const [role, setRole] = useState("") // Pode ser 'ROLE_CUIDADOR' ou 'ROLE_IDOSO'
   const [showPassword, setShowPassword] = useState(false)
@@ -51,6 +52,9 @@ function Register() {
     if (!role) {
       nextFieldErrors.role = "Selecione o seu perfil de acesso."
     }
+    if (!acceptTerms) {
+      nextFieldErrors.terms = "É necessário aceitar os termos de uso."
+    }
 
     if (password !== confirmPassword) {
       nextFieldErrors.confirmPassword = "As senhas precisam ser iguais."
@@ -74,7 +78,9 @@ function Register() {
         cpf: cpf.replace(/\D/g, ""),
         email,
         senha: password,
-        tipoUsuario: role === "ROLE_CUIDADOR" ? "Cuidador" : "Idoso"
+        tipoUsuario: role === "ROLE_CUIDADOR" ? "Cuidador" : "Idoso",
+        aceitaTermos: acceptTerms,
+        versaoTermos: "1.0-minuta",
       }
 
       const user = await register(userData)
@@ -481,6 +487,24 @@ function Register() {
             )}
           </div>
           {/* Fim das senhas */}
+
+          <div className="auth-terms">
+            <details>
+              <summary>Leia os termos de uso (versão 1.0 - minuta)</summary>
+              <div className="auth-terms-content">
+                <p>O Senior+ é uma ferramenta de apoio à organização de cuidados, medicamentos, eventos e comunicação entre pessoas autorizadas. Não substitui profissionais de saúde, serviços de emergência ou orientação médica. Lembretes e mensagens podem falhar ou sofrer atrasos.</p>
+                <p>O usuário deve fornecer informações corretas, proteger suas credenciais e usar a plataforma somente para pessoas cujos dados esteja autorizado a tratar. Não compartilhe dados de saúde desnecessários. O vínculo com um cuidador depende das funcionalidades de autorização da plataforma.</p>
+                <p>Os dados informados são usados para operar as funcionalidades solicitadas. O tratamento de dados pessoais e de saúde, incluindo acesso, compartilhamento, retenção e solicitações dos titulares, deve seguir a legislação aplicável e a política de privacidade disponibilizada pelo responsável pela aplicação.</p>
+                <p>Em uma emergência, procure imediatamente os serviços de emergência competentes. Não dependa exclusivamente da plataforma para situações urgentes ou para a administração de medicamentos.</p>
+                <p>O responsável pela aplicação poderá comunicar mudanças nestes termos. Condições comerciais, canais de contato e política de privacidade devem ser informados antes da oferta ao público. Esta versão é uma minuta e deve ser revisada pelo responsável e por assessoria jurídica antes da produção.</p>
+              </div>
+            </details>
+            <label htmlFor="accept-terms">
+              <input id="accept-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required />
+              Li e aceito os termos de uso.
+            </label>
+            {fieldErrors.terms && <span className="auth-field-error">{fieldErrors.terms}</span>}
+          </div>
 
           <button type="submit" className="auth-button" disabled={isLoading}>
             {isLoading ? (

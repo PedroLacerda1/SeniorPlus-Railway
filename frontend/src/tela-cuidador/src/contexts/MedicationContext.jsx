@@ -71,13 +71,14 @@ export const MedicationProvider = ({ children }) => {
 
   const normalizeMedication = useCallback((medication) => {
     if (!medication) return null
+    const times = parseTimes(medication.time || medication.times || medication.horarios)
     const base = {
       id: medication.id || uuidv4(),
       name: medication.name || medication.nome || "",
       dosage: medication.dosage || medication.dosagem || "",
       frequency: medication.frequency || medication.frequencia || "",
-      time: medication.time || medication.horarios || "",
-      times: parseTimes(medication.times || medication.time || medication.horarios),
+      time: times.join(", "),
+      times,
       startDate: medication.startDate || medication.dataInicio || toLocalISODate(),
       endDate: medication.endDate || medication.dataFim || "",
       status: medication.status || "active",
@@ -86,10 +87,6 @@ export const MedicationProvider = ({ children }) => {
       notes: medication.notes || medication.observacoes || "",
       createdAt: medication.createdAt || new Date().toISOString(),
       updatedAt: medication.updatedAt || new Date().toISOString(),
-    }
-
-    if (!Array.isArray(base.times) || base.times.length === 0) {
-      base.times = parseTimes(base.time)
     }
 
     return base

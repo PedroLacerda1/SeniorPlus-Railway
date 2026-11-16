@@ -5,6 +5,7 @@ import { useToast } from "../../../contexts/ToastContext"
 import "../styles/Configuracoes.css"
 import BackButton from "../../../components/BackButton"
 import { useCaregiverProfile } from "../contexts/CaregiverProfileContext"
+import ProfileImage from "../../../components/ProfileImage"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { getReminderPrefs, reminderPrefsScope, saveReminderPrefs } from "../../../utils/reminderPrefs"
 
@@ -12,7 +13,7 @@ function Configuracoes() {
   const { darkMode, toggleDarkMode } = useTheme()
   const { prefs, setFontScale, increaseFontScale, decreaseFontScale, toggleHighContrast, toggleReducedMotion, toggleReadingMode } = useAccessibility()
   const { showSuccess, showError } = useToast()
-  const { caregiverProfile, updateCaregiverProfile, resetCaregiverProfile } = useCaregiverProfile()
+  const { caregiverProfile, profileLoading, profileUnavailable, updateCaregiverProfile, resetCaregiverProfile } = useCaregiverProfile()
   const { currentUser } = useAuth()
   const reminderPrefsKey = reminderPrefsScope(currentUser)
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => getReminderPrefs(reminderPrefsKey).notificationsEnabled)
@@ -97,8 +98,12 @@ function Configuracoes() {
   const handleCaregiverPhotoChange = (event) => {
     const file = event.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith("image/")) {
-      showError?.("Selecione um arquivo de imagem válido")
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      showError?.("Selecione uma imagem PNG, JPG ou WEBP.")
+      return
+    }
+    if (file.size > 1.75 * 1024 * 1024) {
+      showError?.("A foto deve ter no máximo 1,75 MB.")
       return
     }
 
@@ -122,29 +127,23 @@ function Configuracoes() {
       showSuccess?.("Perfil do cuidador atualizado!")
     } catch (error) {
       console.error("Erro ao salvar perfil do cuidador", error)
-      showError?.("Não foi possível salvar o perfil agora.")
+      showError?.(error?.message || "Não foi possível salvar o perfil agora.")
     } finally {
       setSavingProfile(false)
     }
   }
 
-  const handleResetCaregiver = () => {
-    resetCaregiverProfile()
-    setCaregiverForm({
-      displayName:
-        currentUser?.name ||
-        currentUser?.nome ||
-        currentUser?.fullName ||
-        currentUser?.username ||
-        "",
-      headline: "",
-      about: "",
-      photoUrl: "",
-      phone: currentUser?.telefone || currentUser?.phone || "",
-      email: currentUser?.email || "",
-      connectionMessage: "",
-    })
-    showSuccess?.("Perfil restaurado para o padrão")
+  const handleResetCaregiver = async () => {
+    setSavingProfile(true)
+    try {
+      await resetCaregiverProfile()
+      showSuccess?.("Perfil restaurado para o padrão")
+    } catch (error) {
+      console.error("Erro ao restaurar perfil do cuidador", error)
+      showError?.("Não foi possível restaurar o perfil agora.")
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   const handleNotificationsToggle = () => {
@@ -248,14 +247,14 @@ function Configuracoes() {
                   </p>
                   <label className="photo-input" aria-label="Enviar foto do cuidador">
                     {caregiverForm.photoUrl ? (
-                      <img
+                      <ProfileImage
                         src={caregiverForm.photoUrl}
                         alt="Pré-visualização da foto do cuidador"
                       />
                     ) : (
                       <span>Adicionar foto</span>
                     )}
-                    <input type="file" accept="image/*" onChange={handleCaregiverPhotoChange} />
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleCaregiverPhotoChange} />
                   </label>
                   {caregiverForm.photoUrl ? (
                     <button
@@ -354,7 +353,7 @@ function Configuracoes() {
                     <div className="settings-option-info">
                       <label className="settings-option-label" htmlFor="email">E-mail</label>
                       <div className="settings-option-description">
-                        Usado para exibir informações de contato e receber notificações.
+                        Exibido como informação de contato.
                       </div>
                     </div>
                     <div className="settings-option-control">
@@ -397,10 +396,11 @@ function Configuracoes() {
                   type="button"
                   className="settings-button secondary"
                   onClick={handleResetCaregiver}
+                  disabled={savingProfile || profileLoading || profileUnavailable}
                 >
                   Restaurar padrão
                 </button>
-                <button type="submit" className="settings-button" disabled={savingProfile}>
+                <button type="submit" className="settings-button" disabled={savingProfile || profileLoading || profileUnavailable}>
                   {savingProfile ? "Salvando..." : "Salvar perfil"}
                 </button>
               </div>

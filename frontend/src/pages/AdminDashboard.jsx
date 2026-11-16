@@ -32,6 +32,23 @@ function AdminDashboard() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [queueStatus, setQueueStatus] = useState(null)
+  const [queueError, setQueueError] = useState("")
+  const [queueLoading, setQueueLoading] = useState(false)
+
+  const checkQueue = async () => {
+    setQueueLoading(true)
+    setQueueError("")
+    setQueueStatus(null)
+    try {
+      setQueueStatus(await api.getAdminReminderQueue())
+    } catch (queueFailure) {
+      console.error("Falha ao consultar fila de lembretes", queueFailure)
+      setQueueError(queueFailure.message || "Não foi possível consultar a fila.")
+    } finally {
+      setQueueLoading(false)
+    }
+  }
 
   const loadDashboard = useCallback(async () => {
     setLoading(true)
@@ -166,6 +183,23 @@ function AdminDashboard() {
         <article><span>Cuidadores</span><strong>{counts.caregivers}</strong></article>
         <article><span>Vínculos ativos</span><strong>{counts.activeLinks}</strong></article>
         <article><span>Solicitações pendentes</span><strong>{counts.pendingLinks}</strong></article>
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-heading">
+          <div>
+            <h2>Fila de lembretes Azure</h2>
+            <p>Os lembretes são publicados no horário previsto e consumidos automaticamente. A contagem é aproximada e não confirma a entrega.</p>
+            {queueStatus && <>
+              <p>Fila: {queueStatus.nome} · Mensagens aproximadas: {queueStatus.quantidadeAproximada}</p>
+              <p>Fila de falhas: {queueStatus.filaFalhas} · Mensagens aproximadas: {queueStatus.falhasAproximadas}</p>
+            </>}
+            {queueError && <p role="alert">{queueError}</p>}
+          </div>
+          <button type="button" className="admin-primary-button" disabled={queueLoading} onClick={checkQueue}>
+            {queueLoading ? "Consultando..." : "Consultar fila"}
+          </button>
+        </div>
       </section>
 
       <section className="admin-panel">

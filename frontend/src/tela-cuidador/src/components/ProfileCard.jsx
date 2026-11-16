@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "../styles/ProfileCard.css";
 import { api } from "../../../tela-auth/src/services/api";
 import { useUser } from "../contexts/UserContext";
+import ProfileImage from "../../../components/ProfileImage";
 
 const formatCpf = (valor) => {
   if (!valor) {
@@ -151,7 +152,7 @@ function ProfileCard() {
       <div className="profile-header">
         <div className="profile-avatar">
           {elderlyData.photoUrl ? (
-            <img
+            <ProfileImage
               src={elderlyData.photoUrl}
               alt="Foto do idoso"
               onError={(e) => {

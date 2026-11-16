@@ -5,6 +5,7 @@ import "../styles/Sidebar.css"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { useChat } from "../../../contexts/ChatContext"
 import { useCaregiverProfile } from "../contexts/CaregiverProfileContext"
+import ProfileImage from "../../../components/ProfileImage"
 
 function Sidebar({ isOpen, toggleSidebar }) {
   const navigate = useNavigate()
@@ -88,7 +89,7 @@ function Sidebar({ isOpen, toggleSidebar }) {
           <div className="user-info">
             <div className="avatar-large">
               {avatarUrl ? (
-                <img
+                <ProfileImage
                   src={avatarUrl}
                   alt={`Foto de ${displayName}`}
                   onError={(event) => {

@@ -167,6 +167,18 @@ const shouldAttachAuthHeader = (endpoint = "") => {
 
 // API methods
 export const api = {
+  getProfileImage: async (reference) => {
+    const match = /^profile-image:(idoso|cuidador):(\d{11}):([0-9a-f-]{36})$/.exec(reference)
+    if (!match) throw new Error("Referência de foto inválida.")
+    const token = authToken || localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
+    if (!token) throw new Error("Autenticação necessária para carregar a foto.")
+    const endpoint = `/api/v1/profile-images/${match[1]}/${match[2]}/${match[3]}`
+    const url = isRelativeProxy ? endpoint : `${API_URL}${endpoint}`
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (!response.ok) throw await buildApiError(response)
+    return response.blob()
+  },
+
   // Endpoints para Eventos
   listEventos: async (idosoCpf) => {
     return api.get(`/api/v1/idosos/${idosoCpf}/eventos`);
@@ -207,6 +219,7 @@ export const api = {
   updateAdminUserStatus: async (id, ativo) =>
     api.patch(`/api/v1/admin/users/${id}/status`, { ativo }),
   listAdminLinks: async () => api.get("/api/v1/admin/links"),
+  getAdminReminderQueue: async () => api.get("/api/v1/admin/reminder-queue"),
 
   // Endpoints para Contatos de Emergência
   listEmergencyContacts: async (idosoCpf) => {

@@ -6,6 +6,7 @@ import { useChat } from "../contexts/ChatContext"
 import "../styles/CaregiverHeader.css"
 import { useAuth } from "../tela-auth/src/contexts/AuthContext"
 import { useCaregiverProfile } from "../tela-cuidador/src/contexts/CaregiverProfileContext"
+import ProfileImage from "./ProfileImage"
 
 function CaregiverHeader({ toggleSidebar }) {
   const { darkMode, toggleDarkMode } = useTheme()
@@ -126,7 +127,7 @@ function CaregiverHeader({ toggleSidebar }) {
 
         <div className="avatar" onClick={toggleSidebar} title={displayName}>
           {avatarUrl ? (
-            <img
+            <ProfileImage
               src={avatarUrl}
               alt={`Foto de ${displayName}`}
               onError={(event) => {

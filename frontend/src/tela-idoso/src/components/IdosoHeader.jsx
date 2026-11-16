@@ -8,6 +8,7 @@ import "../styles/Header.css"
 import Sidebar from "./SidebarDrawer"
 import { useUser } from "../../../tela-cuidador/src/contexts/UserContext"
 import { useResidentIdentity } from "../hooks/useResidentIdentity"
+import ProfileImage from "../../../components/ProfileImage"
 
 export default function IdosoHeader() {
   const { currentUser } = useAuth()
@@ -87,7 +88,7 @@ export default function IdosoHeader() {
             onClick={() => setSidebarOpen((open) => !open)}
           >
             {avatarUrl ? (
-              <img
+              <ProfileImage
                 src={avatarUrl}
                 alt={`Foto de ${displayName}`}
                 onError={(event) => {

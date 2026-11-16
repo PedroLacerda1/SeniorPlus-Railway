@@ -3,10 +3,13 @@ import "../styles/ProfileCard.css";
 import { api } from "../../../tela-auth/src/services/api";
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
+import ProfileImage from "../../../components/ProfileImage";
+import { useUser } from "../../../tela-cuidador/src/contexts/UserContext";
 
 function ProfileCard() {
   const { currentUser } = useAuth();
   const { showError, showSuccess } = useToast();
+  const { updateElderlyData } = useUser();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const showErrorRef = useRef(showError);
@@ -48,12 +51,13 @@ function ProfileCard() {
         .forEach((c) => {
           const cpfCuidador = c.cpf || c.cuidadorCpf || null;
           listaCuidadores.push({
-            nome: c.nome || "Cuidador vinculado",
+            nome: c.displayName || c.nome || "Cuidador vinculado",
             cpf: cpfCuidador,
-            email: c.email || null,
-            telefone: c.telefone || null,
+            email: c.profileEmail || c.email || null,
+            telefone: c.profilePhone || c.telefone || null,
             fotoUrl: c.fotoUrl || c.foto || c.avatarUrl || null,
             headline: c.headline || null,
+            about: c.about || null,
           });
         });
 
@@ -99,6 +103,9 @@ function ProfileCard() {
         const data = await api.get("/api/v1/idoso/informacoesIdoso");
         const normalizado = normalizarPerfil(data);
         setProfile(normalizado);
+        if (currentUser?.role === "elderly") {
+          updateElderlyData({ cpf: normalizado.cpf, name: normalizado.nome, photoUrl: normalizado.fotoUrl });
+        }
         if (notify && normalizado && showSuccessRef.current) {
           showSuccessRef.current("Dados atualizados com sucesso.");
         }
@@ -112,7 +119,7 @@ function ProfileCard() {
         setLoading(false);
       }
     },
-    [normalizarPerfil]
+    [normalizarPerfil, currentUser?.role, updateElderlyData]
   );
 
   useEffect(() => {
@@ -169,7 +176,7 @@ function ProfileCard() {
       <div className="profile-header">
         <div className="avatar" aria-hidden={!profile?.fotoUrl}>
           {profile?.fotoUrl ? (
-            <img
+            <ProfileImage
               src={profile.fotoUrl}
               alt={`Foto de ${profile?.nome}`}
               onError={(event) => {
@@ -226,7 +233,7 @@ function ProfileCard() {
                 <div className="caregiver-card-header">
                   <div className="caregiver-avatar" aria-hidden={!item.fotoUrl}>
                     {item.fotoUrl ? (
-                      <img
+                      <ProfileImage
                         src={item.fotoUrl}
                         alt={`Foto de ${item.nome || 'Cuidador'}`}
                         onError={(event) => {
@@ -254,6 +261,7 @@ function ProfileCard() {
                     {item.headline ? <div className="caregiver-headline">{item.headline}</div> : null}
                   </div>
                 </div>
+                {item.about ? <p>{item.about}</p> : null}
                 <dl className="caregiver-meta">
                   <div>
                     <dt>CPF</dt>

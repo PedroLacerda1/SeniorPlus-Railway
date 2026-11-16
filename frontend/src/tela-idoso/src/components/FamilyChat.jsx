@@ -12,6 +12,7 @@ import "../styles/FamilyChat.css";
 import { api } from "../../../tela-auth/src/services/api";
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext";
 import LoadingSpinner from "../../../components/LoadingSpinner";
+import ProfileImage from "../../../components/ProfileImage";
 import ErrorMessage from "../../../components/ErrorMessage";
 import useResidentIdentity from "../hooks/useResidentIdentity";
 import {
@@ -248,7 +249,8 @@ const FamilyChat = () => {
     const primary = pickPrimaryCaregiver(candidates);
     if (!primary) return;
     setCaregiver((prev) => {
-      if (prev && prev.nome === primary.nome && prev.cpf === primary.cpf) {
+      if (prev && prev.nome === primary.nome && prev.cpf === primary.cpf
+          && prev.fotoUrl === primary.fotoUrl && prev.email === primary.email && prev.telefone === primary.telefone) {
         return prev;
       }
       return primary;
@@ -829,7 +831,7 @@ const FamilyChat = () => {
         <div className="family-chat-contact" aria-live="polite">
           <div className="family-chat-avatar" aria-hidden={!caregiver}>
             {caregiver?.fotoUrl ? (
-              <img
+              <ProfileImage
                 src={caregiver.fotoUrl}
                 alt={caregiver?.nome ? `Foto de ${caregiver.nome}` : "Foto do cuidador"}
                 onError={(event) => {

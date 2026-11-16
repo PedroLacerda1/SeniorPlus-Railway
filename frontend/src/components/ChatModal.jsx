@@ -468,7 +468,7 @@ function ChatModal() {
         shouldFollowMessagesRef.current = scrollHeight - scrollTop - clientHeight < 120
     }
 
-    const handleSendMessage = (e) => {
+    const handleSendMessage = async (e) => {
         e.preventDefault()
         const targetIdentifier = activeIdentifier
         const sanitizedContent = sanitizeMessage(newMessage)
@@ -515,10 +515,9 @@ function ChatModal() {
         setMessages((prev) => [...prev, optimistic])
         setNewMessage("")
 
-        // Envia para o backend
-        (async () => {
-            try {
+        try {
             const resp = await api.enviarMensagem(targetIdentifier, payload)
+            if (!resp?.id) throw new Error("O servidor não confirmou o envio da mensagem.")
                 // Backend retorna objeto Mensagem (com id e dataHora)
                 if (resp && resp.id) {
                     const mapped = {
@@ -542,12 +541,12 @@ function ChatModal() {
                     }
                     await fetchMessages({ silent: true })
                 }
-            } catch (error) {
-                console.error('Erro ao enviar mensagem:', error)
-                setMessages((prev) => prev.filter((message) => message.id !== optimistic.id))
-                showError(error?.message || 'Não foi possível enviar a mensagem. Tente novamente.')
-            }
-        })()
+        } catch (error) {
+            console.error('Erro ao enviar mensagem:', error)
+            setMessages((prev) => prev.filter((message) => message.id !== optimistic.id))
+            setNewMessage((current) => current || sanitizedContent)
+            showError(error?.message || 'Não foi possível enviar a mensagem. Tente novamente.')
+        }
     }
 
     const formatTime = useCallback(

@@ -5,6 +5,8 @@ import { api } from "../../../tela-auth/src/services/api"
 import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { useToast } from "../../../contexts/ToastContext"
 import { useUser } from "../contexts/UserContext"
+import { useCaregiverProfile } from "../contexts/CaregiverProfileContext"
+import ProfileImage from "../../../components/ProfileImage"
 
 const emptyForm = {
   cpf: "",
@@ -258,6 +260,7 @@ const mapFormToElderlyData = (form) => {
 
 function AtualizarDados() {
   const { currentUser } = useAuth()
+  const { caregiverProfile } = useCaregiverProfile()
   const { showError, showSuccess } = useToast()
   const { updateElderlyData } = useUser() || {}
 
@@ -587,7 +590,7 @@ function AtualizarDados() {
     try {
       await api.post('/api/v1/vinculos/solicitacoes', {
         idosoCpf: cpfNormalizado,
-        mensagem: `Solicitação enviada por ${currentUser?.nome || 'cuidador'} em ${new Date().toLocaleString('pt-BR')}`,
+        mensagem: caregiverProfile?.connectionMessage?.trim() || `Solicitação enviada por ${currentUser?.nome || 'cuidador'} em ${new Date().toLocaleString('pt-BR')}`,
       })
 
       const mensagemSucesso = "Solicitação enviada! Aguarde o idoso aceitar o vínculo."
@@ -904,7 +907,7 @@ function AtualizarDados() {
               <div className="photo-field">
                 <label className="photo-input" aria-label="Enviar foto do idoso">
                   {formData.fotoUrl ? (
-                    <img src={formData.fotoUrl} alt="Pré-visualização do idoso" onError={handlePhotoRemoval} />
+                    <ProfileImage src={formData.fotoUrl} alt="Pré-visualização do idoso" />
                   ) : (
                     <span className="photo-placeholder">Adicionar foto</span>
                   )}

@@ -15,6 +15,7 @@ import { useAuth } from "../../../tela-auth/src/contexts/AuthContext"
 import { useUser } from "../../../tela-cuidador/src/contexts/UserContext"
 import "../styles/Sidebar.css"
 import { useResidentIdentity } from "../hooks/useResidentIdentity"
+import ProfileImage from "../../../components/ProfileImage"
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, route: "/tela-idoso/dashboard", target: "idoso-root" },
@@ -123,7 +124,7 @@ export default function SidebarDrawer({
           <div className="sidebar-profile" aria-label="Perfil do idoso">
             <div className="sidebar-profile__avatar" aria-hidden={!displayAvatar}>
               {displayAvatar ? (
-                <img
+                <ProfileImage
                   src={displayAvatar}
                   alt={`Foto de ${displayName}`}
                   onError={(event) => {

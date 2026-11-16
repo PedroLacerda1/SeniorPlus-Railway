@@ -605,3 +605,28 @@ body.auth-page {
     border-color: #475569;
     color: #64748b;
 }
+.auth-terms {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-terms summary {
+  cursor: pointer;
+  color: var(--primary-color);
+}
+
+.auth-terms-content {
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.auth-terms-content p {
+  margin: 0 0 12px;
+}
+
+.auth-terms label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
